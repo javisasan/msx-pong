@@ -1,0 +1,2 @@
+10 REM BASIC LOADER
+40 BLOAD "msxpong.bin",R
