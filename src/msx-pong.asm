@@ -86,7 +86,10 @@ pausemode:
 	jp	    z,exit                              ;...jump to exit
 
     ; jr      pausemode
-    jr      loop
+
+    ld      a,(goal_status)
+    cp      0
+    jr      z,loop
 
 exit:
     ret
@@ -183,19 +186,6 @@ dump_sprite_attrs_to_ram:
 ; Update ball increments
 ;------------------------------------------------------------------------
 update_ball_deltas:
-    ld      a,(ball_speed)                      ;if ball speed is equal a number, continue
-    cp      1
-    jr      z,continue_deltas
-    ld      a,(ball_bounces)                    ;if ball bounces dont reach a number, continue
-    cp      20
-    jr      nz,continue_deltas
-    ld      a,0                                 ;reset ball bounces to 0
-    ld      (ball_bounces),a
-    ld      a,(ball_speed)                      ;increase ball speed
-    inc     a
-    ld      (ball_speed),a
-
-continue_deltas:
     ld      a,(ball_y)                          ;load ball y position into a registry
     cp      178                                 ;compare with 178 (max y is 191)
     jr      nc,change_ball_delta_y              ;jump if y position greater
@@ -203,20 +193,18 @@ continue_deltas:
     jr      c,change_ball_delta_y               ;jump if lower
 
 check_delta_x:
-    ld      a,(ball_x)                          
-    cp      247
-    ; jr      nc,change_ball_delta_x
-    jp      END
-    cp      4
-    ; jr      c,change_ball_delta_x
-    jp      END
+    ; ld      a,(ball_x)
+    ; cp      247
+    ; jp      END
+    ; cp      4
+    ; jp      END
 delta_ret:
     ret
 
 change_ball_delta_y:
-    ld      a,(ball_bounces)
-    inc     a
-    ld      (ball_bounces),a
+    ; ld      a,(ball_bounces)
+    ; inc     a
+    ; ld      (ball_bounces),a
     ld      a,(ball_y_inc)                      
     cp      1
     jr      z,change_ball_delta_y_negative
@@ -272,12 +260,14 @@ update_ball_position:
 update_pos_x:    
     ld      a,(ball_x_inc)
     cp      1
-    jp      z,ball_x_increase
+    jr      z,ball_x_increase
     
     ld      a,(ball_speed)
     ld      b,a
     ld      a,(ball_x)
     call    loop_position_decrement
+    cp      249 ;ojo
+    call    nc,goal_player_2
     ld      (ball_x),a
 update_ret:
     ret
@@ -289,15 +279,17 @@ ball_y_increase:
     ld      a,(ball_y)
     call    loop_position_increment
     ld      (ball_y),a
-    jp      update_pos_x
+    jr      update_pos_x
 
 ball_x_increase:
     ld      a,(ball_speed)
     ld      b,a
     ld      a,(ball_x)
     call    loop_position_increment
+    cp      249
+    call    nc,goal_player_1
     ld      (ball_x),a
-    jp      update_ret
+    jr      update_ret
 
 
 loop_position_increment
@@ -318,17 +310,20 @@ update_computer_player:
     ld      a,(ply2_y)
     ld      b,a
     ld      a,(ball_y)
-    add     a,4
     cp      b
     jr      z,update_computer_player_finish
     jr      c,update_computer_player_decrease
+    ld      a,(computer_speed)
+    ld      b,a
     ld      a,(ply2_y)
-    add     a,3
+    add     a,b
     ld      (ply2_y),a
     jr      update_computer_player_finish
 update_computer_player_decrease:
+    ld      a,(computer_speed)
+    ld      b,a
     ld      a,(ply2_y)
-    sub     a,3
+    sub     a,b
     ld      (ply2_y),a
 update_computer_player_finish
     ret
@@ -372,10 +367,33 @@ check_collisions:
     bit     5,a
     jr      z,check_collisions_end
 
-    
+    ld      a,(ball_bounces)                    ;increase ball bounces
+    inc     a
+    ld      (ball_bounces),a
+    ld      a,(ball_speed)                      ;if ball speed is equal a number, continue
+    cp      4
+    jr      z,continue_collision
+    ld      a,(ball_bounces)                    ;if ball bounces dont reach a number, continue
+    cp      4
+    jr      nz,continue_collision
+    ld      a,0                                 ;reset ball bounces to 0
+    ld      (ball_bounces),a
+    ld      a,(ball_speed)                      ;increase ball speed
+    inc     a
+    ld      (ball_speed),a
+    cp      4                                   ;increase computer speed if it lower than 3
+    jr      nc,continue_collision
+    ld      (computer_speed),a
+
+continue_collision:
     ld      a,(ball_x_inc)
     cp      1
     jr      z,ball_collision_set_decrease
+
+    ; ld      a,(ball_x)
+    ; cp      #F8
+    ; jr      nc,check_collisions_end
+
     ld      a,1
     ld      (ball_x_inc),a
     ld      a,9
@@ -415,6 +433,26 @@ update_sprite_attrs:
     ret
 
 ;------------------------------------------------------------------------
+; Player 1 Goal
+;------------------------------------------------------------------------
+goal_player_1:
+    ld      a,1
+    ld      (goal_status),a
+    ld      a,249
+    ; call    BEEP
+    ret
+
+;------------------------------------------------------------------------
+; Player 2 Goal
+;------------------------------------------------------------------------
+goal_player_2:
+    ld      a,2
+    ld      (goal_status),a
+    ld      a,0
+    ; call    BEEP
+    ret
+
+;------------------------------------------------------------------------
 ; CONSTANTS
 ;------------------------------------------------------------------------
 
@@ -444,16 +482,20 @@ spr_ply2_2:              db #F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F0,
 ; VARIABLE DEFINITION
 ;------------------------------------------------------------------------
 ball_x:                 db      30
-ball_y:                 db      50
+ball_y:                 db      100
 ball_x_inc:             db      1
 ball_y_inc:             db      1
-ball_speed              db      1
-ball_bounces            db      0
-ply1_y                  db      50
-ply2_y                  db      80
+ball_speed:             db      1
+ball_bounces:           db      0
+ply1_y:                 db      50
+ply2_y:                 db      80
+computer_speed:         db      1
+goal_status:            db      0                   ; 0:no goal, 1:goal player 1, 2:goal player 2
+player_1_score:         db      0
+player_2_score:         db      0
 
 ;ball_spr_attr:          ds      4,0                    ;Y, X, escena, color
-ball_spr_attr:          db      64, #64, #0, #F        ;Y, X, escena, color
+ball_spr_attr:          db      80, 100, #0, #0F        ;Y, X, escena, color
 
 spr_ply1_1_attr:        db      64, 4, 4, 6        ;Y, X, escena, color
 spr_ply1_2_attr:        db      80, 4, 8, 6        ;Y, X, escena, color
