@@ -48,6 +48,9 @@ LDIRVM  equ     #005C       ;RAM/ROM -> VRAM
 LDIRMV  equ     #0059       ;VRAM -> RAM
 CHGMOD  equ     #005F       ;change screen mode
 
+BEEP    equ     #00C0       ;generates beep
+KEYMTX	equ     #FBE5       ;read the keys (Key Matrix, http://map.tni.nl/articles/keymatrix.php)
+
 
 RG0SAV  equ     #F3DF       ;Mirror fo VDP register 0 (Basic: VDP(0))
 RG1SAV  equ     #F3E0       ;Mirror fo VDP register 0 (Basic: VDP(0))
@@ -69,13 +72,24 @@ START:
 
 loop:
     halt
-    call    dump_sprite_attrs_to_ram
+    call    check_collisions
     call    update_ball_deltas
     call    update_ball_position
     call    update_computer_player
     call    update_player_1_controls
     call    update_sprite_attrs
+    call    dump_sprite_attrs_to_ram
+
+pausemode:
+    ld	    a,(KEYMTX+7)                        ;escape key is in row 7...
+	bit	    2,a                                 ;...bit 2. If it's pressed...
+	jp	    z,exit                              ;...jump to exit
+
+    ; jr      pausemode
     jr      loop
+
+exit:
+    ret
 
 
 initialize_video:
@@ -170,7 +184,7 @@ dump_sprite_attrs_to_ram:
 ;------------------------------------------------------------------------
 update_ball_deltas:
     ld      a,(ball_speed)                      ;if ball speed is equal a number, continue
-    cp      6
+    cp      1
     jr      z,continue_deltas
     ld      a,(ball_bounces)                    ;if ball bounces dont reach a number, continue
     cp      20
@@ -191,9 +205,11 @@ continue_deltas:
 check_delta_x:
     ld      a,(ball_x)                          
     cp      247
-    jr      nc,change_ball_delta_x
+    ; jr      nc,change_ball_delta_x
+    jp      END
     cp      4
-    jr      c,change_ball_delta_x
+    ; jr      c,change_ball_delta_x
+    jp      END
 delta_ret:
     ret
 
@@ -218,26 +234,26 @@ change_ball_delta_y_negative:
     ld      (ball_y_inc),a
     jp      check_delta_x
 
-change_ball_delta_x:
-    ld      a,(ball_bounces)
-    inc     a
-    ld      (ball_bounces),a
-    ld      a,(ball_x_inc)                      
-    cp      1
-    jr      z,change_ball_delta_x_negative
-    ld      a,(ball_x)                          ;substract a pixel from x
-    add     a
-    ld      (ball_x),a                          ;end of substract
-    ld      a,1
-    ld      (ball_x_inc),a
-    jp      delta_ret
-change_ball_delta_x_negative:
-    ld      a,(ball_x)                          ;add a pixel to x
-    dec     a
-    ld      (ball_x),a
-    ld      a,0                                 ;now change delta
-    ld      (ball_x_inc),a
-    jp      delta_ret
+; change_ball_delta_x:
+;     ld      a,(ball_bounces)
+;     inc     a
+;     ld      (ball_bounces),a
+;     ld      a,(ball_x_inc)                      
+;     cp      1
+;     jr      z,change_ball_delta_x_negative
+;     ld      a,(ball_x)                          ;substract a pixel from x
+;     add     a
+;     ld      (ball_x),a                          ;end of substract
+;     ld      a,1
+;     ld      (ball_x_inc),a
+;     jp      delta_ret
+; change_ball_delta_x_negative:
+;     ld      a,(ball_x)                          ;add a pixel to x
+;     dec     a
+;     ld      (ball_x),a
+;     ld      a,0                                 ;now change delta
+;     ld      (ball_x_inc),a
+;     jp      delta_ret
 
 ;------------------------------------------------------------------------
 ; Update ball position
@@ -332,12 +348,45 @@ move_player_1_up
     ld      a,(ply1_y)
     sub     a,3
     ld      (ply1_y),a
+    cp      16
+    jr      nc,update_player_1_controls_finish
+    ld      a,16
+    ld      (ply1_y),a
     jr      update_player_1_controls_finish
 move_player_1_down
     ld      a,(ply1_y)
     add     a,3
     ld      (ply1_y),a
+    cp      175
+    jr      c,update_player_1_controls_finish
+    ld      a,175
+    ld      (ply1_y),a
 update_player_1_controls_finish:
+    ret
+
+;------------------------------------------------------------------------
+; Check collisions
+;------------------------------------------------------------------------
+check_collisions:
+    ld      a,(STATFL)
+    bit     5,a
+    jr      z,check_collisions_end
+
+    
+    ld      a,(ball_x_inc)
+    cp      1
+    jr      z,ball_collision_set_decrease
+    ld      a,1
+    ld      (ball_x_inc),a
+    ld      a,9
+    ld      (ball_x),a
+    jr      check_collisions_end
+ball_collision_set_decrease:
+    ld      a,0
+    ld      (ball_x_inc),a
+    ld      a,240
+    ld      (ball_x),a
+check_collisions_end:
     ret
 
 ;------------------------------------------------------------------------
@@ -398,7 +447,7 @@ ball_x:                 db      30
 ball_y:                 db      50
 ball_x_inc:             db      1
 ball_y_inc:             db      1
-ball_speed              db      2
+ball_speed              db      1
 ball_bounces            db      0
 ply1_y                  db      50
 ply2_y                  db      80
@@ -413,3 +462,4 @@ spr_ply2_1_attr:        db      64, 247, 12, 7        ;Y, X, escena, color
 spr_ply2_2_attr:        db      80, 247, 16, 7        ;Y, X, escena, color
 
 END:
+    ret
