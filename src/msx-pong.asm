@@ -447,22 +447,27 @@ goal_player_1:
     ld      hl,#186C
     ld      d,h
     ld      e,l
-    push    hl
-
     ld      ix,marker_0
+    push    hl
+    call    marker_change
+    pop     hl
+    call    delay_wait
+
+    ret
     
+marker_change
     ld      a,5
     ld      b,3
-marker_blur_ini:
+marker_change_ini:
     push    af
-marker_blur_step:
+marker_change_step:
     ld      hl,tile_marker_blur
     bit     0,(ix)
     call    nz,change_marker_tile
     inc     ix
     inc     de
     dec     b
-    jr      nz,marker_blur_step
+    jr      nz,marker_change_step
     ld      b,3
 
     ld      hl,29
@@ -472,43 +477,8 @@ marker_blur_step:
     
     pop     af
     dec     a
-    jr      nz,marker_blur_ini
-    pop     hl
-
-
-    call    delay_wait
-
-
-    ld      d,h
-    ld      e,l
-    push    hl
-    ld      ix,marker_0
-    ld      a,5
-    ld      b,3
-marker_none_ini:
-    push    af
-marker_none_step:
-    ld      hl,tile_marker_off
-    bit     0,(ix)
-    call    nz,change_marker_tile
-    inc     ix
-    inc     de
-    dec     b
-    jr      nz,marker_none_step
-    ld      b,3
-
-    ld      hl,29
-    add     hl,de
-    ld      d,h
-    ld      e,l
-    
-    pop     af
-    dec     a
-    jr      nz,marker_none_ini
-    pop     hl
-
-
-    ret 
+    jr      nz,marker_change_ini
+    ret
 
 
 change_marker_tile:
