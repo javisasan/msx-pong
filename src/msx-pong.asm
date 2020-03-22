@@ -87,9 +87,17 @@ pausemode:
 
     ; jr      pausemode
 
-    ld      a,(goal_status)
-    cp      0
-    jr      z,loop
+    ;salir al meter un gol
+    ; ld      a,(goal_status)
+    ; cp      0
+    ; jr      z,loop
+
+    ;test incremento marcadores
+    ld	    a,(KEYMTX+5)
+	bit	    7,a
+    call    z,goal_player_1
+    jr      pausemode
+
 
 exit:
     ret
@@ -436,20 +444,101 @@ update_sprite_attrs:
 ; Player 1 Goal
 ;------------------------------------------------------------------------
 goal_player_1:
-    ld      a,1
-    ld      (goal_status),a
-    ld      a,249
-    ; call    BEEP
+    ld      hl,#186C
+    ld      d,h
+    ld      e,l
+    push    hl
+
+    ld      ix,marker_0
+    
+    ld      a,5
+    ld      b,3
+marker_blur_ini:
+    push    af
+marker_blur_step:
+    ld      hl,tile_marker_blur
+    bit     0,(ix)
+    call    nz,change_marker_tile
+    inc     ix
+    inc     de
+    dec     b
+    jr      nz,marker_blur_step
+    ld      b,3
+
+    ld      hl,29
+    add     hl,de
+    ld      d,h
+    ld      e,l
+    
+    pop     af
+    dec     a
+    jr      nz,marker_blur_ini
+    pop     hl
+
+
+    call    delay_wait
+
+
+    ld      d,h
+    ld      e,l
+    push    hl
+    ld      ix,marker_0
+    ld      a,5
+    ld      b,3
+marker_none_ini:
+    push    af
+marker_none_step:
+    ld      hl,tile_marker_off
+    bit     0,(ix)
+    call    nz,change_marker_tile
+    inc     ix
+    inc     de
+    dec     b
+    jr      nz,marker_none_step
+    ld      b,3
+
+    ld      hl,29
+    add     hl,de
+    ld      d,h
+    ld      e,l
+    
+    pop     af
+    dec     a
+    jr      nz,marker_none_ini
+    pop     hl
+
+
+    ret 
+
+
+change_marker_tile:
+    push    de
+    push    bc
+    ld      bc,1
+    call    LDIRVM
+    pop     bc
+    pop     de
     ret
+
+;------------------------------------------------------------------------
+; Delay Wait
+;------------------------------------------------------------------------
+delay_wait:
+    ld      b,10
+delay_wait_sync:
+    halt
+    djnz    delay_wait_sync
+    ret
+    
 
 ;------------------------------------------------------------------------
 ; Player 2 Goal
 ;------------------------------------------------------------------------
 goal_player_2:
-    ld      a,2
-    ld      (goal_status),a
-    ld      a,0
-    ; call    BEEP
+    ; ld      a,2
+    ; ld      (goal_status),a
+    ; ld      a,0
+    call    BEEP
     ret
 
 ;------------------------------------------------------------------------
@@ -467,16 +556,23 @@ screen_data:            incbin "bin/pong_screen.dat"
 spr_ball:               db #38,#7C,#FE,#FE,#FE,#7C,#38,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
 
 ; Sprites - Player 1
-spr_ply1_1:              db #18,#38,#78,#78,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
-spr_ply1_2:              db #F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#78,#78,#38,#18,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
+spr_ply1_1:             db #18,#38,#78,#78,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
+spr_ply1_2:             db #F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#78,#78,#38,#18,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
 
 ; Sprites - Player 2
-spr_ply2_1:              db #C0,#E0,#F0,#F0,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
-spr_ply2_2:              db #F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F0,#F0,#E0,#C0,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
+spr_ply2_1:             db #C0,#E0,#F0,#F0,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
+spr_ply2_2:             db #F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F0,#F0,#E0,#C0,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
 
+; Marker tile position
+tile_marker_on:         db #08
+tile_marker_blur:       db #28
+tile_marker_off:        db #30
 
-
-
+; Markers
+; marker_0:               db #7B,#6F
+; marker_0_blur:          db #28,#28,#28,#28,#30,#28,#28,#30,#28,#28,#30,#28,#28,#28,#28
+marker_0:          db 1,1,1,1,0,1,1,0,1,1,0,1,1,1,1
+marker_1:          db 0,0,1,0,0,1,0,0,1,0,0,1,0,0,1
 
 ;------------------------------------------------------------------------
 ; VARIABLE DEFINITION
@@ -495,13 +591,14 @@ player_1_score:         db      0
 player_2_score:         db      0
 
 ;ball_spr_attr:          ds      4,0                    ;Y, X, escena, color
-ball_spr_attr:          db      80, 100, #0, #0F        ;Y, X, escena, color
+ball_spr_attr:          db      95, 122, #0, #0F        ;Y, X, escena, color
 
 spr_ply1_1_attr:        db      64, 4, 4, 6        ;Y, X, escena, color
 spr_ply1_2_attr:        db      80, 4, 8, 6        ;Y, X, escena, color
 
-spr_ply2_1_attr:        db      64, 247, 12, 7        ;Y, X, escena, color
-spr_ply2_2_attr:        db      80, 247, 16, 7        ;Y, X, escena, color
+spr_ply2_1_attr:        db      79, 247, 12, 7        ;Y, X, escena, color
+spr_ply2_2_attr:        db      95, 247, 16, 7        ;Y, X, escena, color
+
 
 END:
     ret
