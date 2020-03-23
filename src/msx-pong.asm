@@ -449,6 +449,16 @@ goal_player_1:
     ld      e,l
     ld      ix,marker_0
     push    hl
+    ld      hl,tile_marker_blur
+    call    marker_change
+    pop     hl
+    call    delay_wait
+
+    ld      d,h
+    ld      e,l
+    ld      ix,marker_0
+    push    hl
+    ld      hl,tile_marker_off
     call    marker_change
     pop     hl
     call    delay_wait
@@ -461,19 +471,28 @@ marker_change
 marker_change_ini:
     push    af
 marker_change_step:
-    ld      hl,tile_marker_blur
+    push    bc
+    ld      b,h
+    ld      c,l
+    push    hl
+    ld      h,b
+    ld      l,c
     bit     0,(ix)
     call    nz,change_marker_tile
+    pop     hl
+    pop     bc
     inc     ix
     inc     de
     dec     b
     jr      nz,marker_change_step
     ld      b,3
 
+    push    hl
     ld      hl,29
     add     hl,de
     ld      d,h
     ld      e,l
+    pop     hl
     
     pop     af
     dec     a
