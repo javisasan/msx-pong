@@ -68,6 +68,9 @@ START:
     call    initialize_video
     call    initialize_tiles_and_sprites
     call    initialize_variables
+    call    update_sprite_attrs
+    call    dump_sprite_attrs_to_ram
+    call    delay_wait_long
     ; call    CHGET
 
 loop:
@@ -79,6 +82,9 @@ loop:
     call    update_player_1_controls
     call    update_sprite_attrs
     call    dump_sprite_attrs_to_ram
+    ld      a,(goal_status)
+    cp      0
+    call    nz,check_goal_status
 
 pausemode:
     ld	    a,(KEYMTX+7)                        ;escape key is in row 7...
@@ -164,6 +170,30 @@ initialize_tiles_and_sprites:
     
 
 initialize_variables:
+    ; ball_x:                 db      30
+    ; ball_y:                 db      100
+    ; ball_speed:             db      1
+    ; computer_speed:         db      1
+    ; ball_bounces:           db      0
+    ; ply1_y:                 db      50
+    ; ply2_y:                 db      80
+    ; goal_status:   
+    ld      a,126
+    ld      (ball_x),a
+    ld      a,96
+    ld      (ball_y),a
+    ld      (ply1_y),a
+    ld      (ply2_y),a
+    ld      a,1
+    ld      (ball_speed),a
+    ld      a,1
+    ld      (computer_speed),a
+    ld      a,0
+    ld      (ball_bounces),a
+    ld      a,0
+    ld      (goal_status),a
+    call    update_sprite_attrs
+    call    dump_sprite_attrs_to_ram
     ret
 
 dump_sprite_attrs_to_ram:
@@ -277,7 +307,9 @@ update_pos_x:
     ld      a,(ball_x)
     call    loop_position_decrement
     cp      249 ;ojo
-    call    nc,goal_player_2
+    ; call    nc,goal_player_2
+    ld      b,2
+    call    nc,change_goal_status
     ld      (ball_x),a
 update_ret:
     ret
@@ -297,7 +329,9 @@ ball_x_increase:
     ld      a,(ball_x)
     call    loop_position_increment
     cp      249
-    call    nc,goal_player_1
+    ; call    nc,goal_player_1
+    ld      b,1
+    call    nc,change_goal_status
     ld      (ball_x),a
     jr      update_ret
 
@@ -312,6 +346,18 @@ loop_position_decrement
     djnz    loop_position_decrement
     ret
 
+change_goal_status:
+    push    af
+    ld      a,b
+    ld      (goal_status),a
+    pop     af
+    ret
+reset_goal_status
+    push    af
+    ld      a,0
+    ld      (goal_status),a
+    pop     af
+    ret
 
 ;------------------------------------------------------------------------
 ; Update computer player
@@ -443,9 +489,27 @@ update_sprite_attrs:
     ret
 
 ;------------------------------------------------------------------------
+; Check Goals
+;------------------------------------------------------------------------
+check_goal_status:
+    ld      a,(goal_status)
+    cp      1
+    call    z,goal_player_1
+    ld      a,(goal_status)
+    cp      2
+    call    z,goal_player_2
+    call    reset_goal_status
+    call    hide_ball
+    call    delay_wait_long
+    call    initialize_variables
+    ret
+
+;------------------------------------------------------------------------
 ; Player 1 Goal
 ;------------------------------------------------------------------------
 goal_player_1:
+    call    hide_ball
+
     ld      a,(player_1_score)
     call    get_score_marker
 
@@ -474,7 +538,6 @@ goal_player_1:
 
     ld      a,(player_1_score)
     call    get_score_marker
-    ld      hl,#186C
     ld      d,h
     ld      e,l
     push    hl
@@ -485,17 +548,81 @@ goal_player_1:
 
     ld      a,(player_1_score)
     call    get_score_marker
-    ld      hl,#186C
     ld      d,h
     ld      e,l
     push    hl
     ld      hl,tile_marker_on
     call    marker_change
     pop     hl
-    call    delay_wait_short
 
     ret
+
+;------------------------------------------------------------------------
+; Player 2 Goal
+;------------------------------------------------------------------------
+goal_player_2:
+    ld      a,(player_2_score)
+    call    get_score_marker
+
+    ld      hl,#1871
+    ld      d,h
+    ld      e,l
+    push    hl
+    ld      hl,tile_marker_blur
+    call    marker_change
+    pop     hl
+    call    delay_wait_short
     
+    ld      a,(player_2_score)
+    call    get_score_marker
+    ld      d,h
+    ld      e,l
+    push    hl
+    ld      hl,tile_marker_off
+    call    marker_change
+    pop     hl
+    call    delay_wait_short
+
+    ld      a,(player_2_score)
+    inc     a
+    ld      (player_2_score),a
+
+    ld      a,(player_2_score)
+    call    get_score_marker
+    ld      d,h
+    ld      e,l
+    push    hl
+    ld      hl,tile_marker_blur
+    call    marker_change
+    pop     hl
+    call    delay_wait_short
+
+    ld      a,(player_2_score)
+    call    get_score_marker
+    ld      d,h
+    ld      e,l
+    push    hl
+    ld      hl,tile_marker_on
+    call    marker_change
+    pop     hl
+
+    ret
+
+hide_ball:
+    ld      a,192               ;put ball sprite Y under screen limit
+    ld      (ball_y),a
+    ld      ix,ball_spr_attr    ;Update ball sprite attrs
+    ld      a,(ball_y)
+    ld      (ix+0),a
+    ld      hl,ball_spr_attr    ;dump ball sprite attributes to VRAM
+    ld      de,#1b00
+    ld      bc,2
+    call    LDIRVM
+    ret
+
+;------------------------------------------------------------------------
+; Routines for changing the Score markers
+;------------------------------------------------------------------------
 marker_change
     ld      a,5
     ld      b,3
@@ -598,21 +725,14 @@ get_score_marker_9:
 ;------------------------------------------------------------------------
 delay_wait_short:
     ld      b,5
+    jr      delay_wait_sync
+delay_wait_long:
+    ld      b,60
 delay_wait_sync:
     halt
     djnz    delay_wait_sync
     ret
     
-
-;------------------------------------------------------------------------
-; Player 2 Goal
-;------------------------------------------------------------------------
-goal_player_2:
-    ; ld      a,2
-    ; ld      (goal_status),a
-    ; ld      a,0
-    call    BEEP
-    ret
 
 ;------------------------------------------------------------------------
 ; CONSTANTS
