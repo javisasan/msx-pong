@@ -93,10 +93,12 @@ pausemode:
     ; jr      z,loop
 
     ;test incremento marcadores
-    ld	    a,(KEYMTX+5)
-	bit	    7,a
-    call    z,goal_player_1
-    jr      pausemode
+    ; ld	    a,(KEYMTX+5)
+	; bit	    7,a
+    ; call    z,goal_player_1
+    ; jr      pausemode
+
+    jr      loop
 
 
 exit:
@@ -444,24 +446,53 @@ update_sprite_attrs:
 ; Player 1 Goal
 ;------------------------------------------------------------------------
 goal_player_1:
+    ld      a,(player_1_score)
+    call    get_score_marker
+
     ld      hl,#186C
     ld      d,h
     ld      e,l
-    ld      ix,marker_0
     push    hl
     ld      hl,tile_marker_blur
     call    marker_change
     pop     hl
-    call    delay_wait
-
+    call    delay_wait_short
+    
+    ld      a,(player_1_score)
+    call    get_score_marker
     ld      d,h
     ld      e,l
-    ld      ix,marker_0
     push    hl
     ld      hl,tile_marker_off
     call    marker_change
     pop     hl
-    call    delay_wait
+    call    delay_wait_short
+
+    ld      a,(player_1_score)
+    inc     a
+    ld      (player_1_score),a
+
+    ld      a,(player_1_score)
+    call    get_score_marker
+    ld      hl,#186C
+    ld      d,h
+    ld      e,l
+    push    hl
+    ld      hl,tile_marker_blur
+    call    marker_change
+    pop     hl
+    call    delay_wait_short
+
+    ld      a,(player_1_score)
+    call    get_score_marker
+    ld      hl,#186C
+    ld      d,h
+    ld      e,l
+    push    hl
+    ld      hl,tile_marker_on
+    call    marker_change
+    pop     hl
+    call    delay_wait_short
 
     ret
     
@@ -509,11 +540,64 @@ change_marker_tile:
     pop     de
     ret
 
+get_score_marker:
+    cp      0
+    jr      z,get_score_marker_0
+    cp      1
+    jr      z,get_score_marker_1
+    cp      2
+    jr      z,get_score_marker_2
+    cp      3
+    jr      z,get_score_marker_3
+    cp      4
+    jr      z,get_score_marker_4
+    cp      5
+    jr      z,get_score_marker_5
+    cp      6
+    jr      z,get_score_marker_6
+    cp      7
+    jr      z,get_score_marker_7
+    cp      8
+    jr      z,get_score_marker_8
+    cp      9
+    jr      z,get_score_marker_9
+get_score_marker_0:
+    ld      ix,marker_0
+    ret
+get_score_marker_1:
+    ld      ix,marker_1
+    ret
+get_score_marker_2:
+    ld      ix,marker_2
+    ret
+get_score_marker_3:
+    ld      ix,marker_3
+    ret
+get_score_marker_4:
+    ld      ix,marker_4
+    ret
+get_score_marker_5:
+    ld      ix,marker_5
+    ret
+get_score_marker_6:
+    ld      ix,marker_6
+    ret
+get_score_marker_7:
+    ld      ix,marker_7
+    ret
+get_score_marker_8:
+    ld      ix,marker_8
+    ret
+get_score_marker_9:
+    ld      ix,marker_9
+    ret
+
+
 ;------------------------------------------------------------------------
 ; Delay Wait
 ;------------------------------------------------------------------------
-delay_wait:
-    ld      b,10
+delay_wait_short:
+    ld      b,5
 delay_wait_sync:
     halt
     djnz    delay_wait_sync
@@ -562,6 +646,14 @@ tile_marker_off:        db #30
 ; marker_0_blur:          db #28,#28,#28,#28,#30,#28,#28,#30,#28,#28,#30,#28,#28,#28,#28
 marker_0:          db 1,1,1,1,0,1,1,0,1,1,0,1,1,1,1
 marker_1:          db 0,0,1,0,0,1,0,0,1,0,0,1,0,0,1
+marker_2:          db 1,1,1,0,0,1,1,1,1,1,0,0,1,1,1
+marker_3:          db 1,1,1,0,0,1,0,1,1,0,0,1,1,1,1
+marker_4:          db 1,0,1,1,0,1,1,1,1,0,0,1,0,0,1
+marker_5:          db 1,1,1,1,0,0,1,1,1,0,0,1,1,1,1
+marker_6:          db 1,1,1,1,0,0,1,1,1,1,0,1,1,1,1
+marker_7:          db 1,1,1,0,0,1,0,0,1,0,0,1,0,0,1
+marker_8:          db 1,1,1,1,0,1,1,1,1,1,0,1,1,1,1
+marker_9:          db 1,1,1,1,0,1,1,1,1,0,0,1,1,1,1
 
 ;------------------------------------------------------------------------
 ; VARIABLE DEFINITION
