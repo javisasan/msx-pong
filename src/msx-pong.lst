@@ -1,4 +1,4 @@
-Sjasm Z80 Assembler v0.42c - www.xl2s.tk             [2020.03.23 - 20:34:50]
+Sjasm Z80 Assembler v0.42c - www.xl2s.tk             [2020.03.24 - 21:06:10]
 
 msx-pong.asm
 Errors: 0
@@ -32,7 +32,7 @@ Errors: 0
       27   00:8200                      
       28   00:8200  FE                      db #fe                  ;cabecera de ficheros que seran cargados con BLOAD desde basic
       29   00:8201  00 82                   dw START
-      30   00:8203  66 BA                   dw END
+      30   00:8203  9A BA                   dw END
       31   00:8205  00 82                   dw START
       32   00:8207                      
       33   00:8207                          org     #8200           ;starting point of the program in RAM
@@ -70,764 +70,791 @@ Errors: 0
       65   00:8200                      
       66   00:8200                      
       67   00:8200                      START:
-      68   00:8200  CD 3B 82                call    initialize_video
-      69   00:8203  CD 4E 82                call    initialize_tiles_and_sprites
-      70   00:8206  CD AF 82                call    initialize_variables
-      71   00:8209  CD 5A 84                call    update_sprite_attrs
-      72   00:820C  CD DA 82                call    dump_sprite_attrs_to_ram
-      73   00:820F  CD 07 86                call    delay_wait_long
-      74   00:8212                          ; call    CHGET
-      75   00:8212                      
-      76   00:8212                      loop:
-      77   00:8212  76                      halt
-      78   00:8213  CD 0D 84                call    check_collisions
-      79   00:8216  CD 17 83                call    update_ball_deltas
-      80   00:8219  CD 48 83                call    update_ball_position
-      81   00:821C  CD B5 83                call    update_computer_player
-      82   00:821F  CD DA 83                call    update_player_1_controls
-      83   00:8222  CD 5A 84                call    update_sprite_attrs
-      84   00:8225  CD DA 82                call    dump_sprite_attrs_to_ram
-      85   00:8228  3A 4F BA                ld      a,(goal_status)
-      86   00:822B  FE 00                   cp      0
-      87   00:822D  C4 91 84                call    nz,check_goal_status
-      88   00:8230                      
-      89   00:8230                      pausemode:
-      90   00:8230  3A EC FB                ld	    a,(KEYMTX+7)                        ;escape key is in row 7...
-      91   00:8233  CB 57               	bit	    2,a                                 ;...bit 2. If it's pressed...
-      92   00:8235  CA 3A 82            	jp	    z,exit                              ;...jump to exit
-      93   00:8238                      
-      94   00:8238                          ; jr      pausemode
-      95   00:8238                      
-      96   00:8238                          ;salir al meter un gol
-      97   00:8238                          ; ld      a,(goal_status)
-      98   00:8238                          ; cp      0
-      99   00:8238                          ; jr      z,loop
-     100   00:8238                      
-     101   00:8238                          ;test incremento marcadores
-     102   00:8238                          ; ld	    a,(KEYMTX+5)
-     103   00:8238                      	; bit	    7,a
-     104   00:8238                          ; call    z,goal_player_1
-     105   00:8238                          ; jr      pausemode
-     106   00:8238                      
-     107   00:8238  18 D8                   jr      loop
-     108   00:823A                      
-     109   00:823A                      
-     110   00:823A                      exit:
-     111   00:823A  C9                      ret
-     112   00:823B                      
-     113   00:823B                      
-     114   00:823B                      initialize_video:
-     115   00:823B  3E 02                   ld      a,2                                 ;change to Screen 2
-     116   00:823D  CD 5F 00                call    CHGMOD
-     117   00:8240                      
-     118   00:8240  3A E0 F3                ld      a,(RG1SAV)
-     119   00:8243  F6 02                   or      00000010b                           ;force 16x16 sprites (screen 2,2)
-     120   00:8245  E6 FE                   and     11111110b                           ;sprites wont be extended
-     121   00:8247                      
-     122   00:8247  47                      ld      b,a
-     123   00:8248  0E 01                   ld      c,1
-     124   00:824A  CD 47 00                call    WRTVDP                              ;writes all to the VDP register 1
-     125   00:824D  C9                      ret
-     126   00:824E                      
-     127   00:824E                      
-     128   00:824E                      initialize_tiles_and_sprites:
-     129   00:824E  21 0D 86                ld      hl,tiles_data                       ;load tiles
-     130   00:8251  11 00 00                ld      de,#0000
-     131   00:8254  01 00 18                ld      bc,256*24
-     132   00:8257  CD 5C 00                call    LDIRVM
-     133   00:825A                          
-     134   00:825A                      
-     135   00:825A  21 0D 9E                ld      hl,tiles_color                      ;load tile colors
-     136   00:825D  11 00 20                ld      de,#2000
-     137   00:8260  01 00 18                ld      bc,256*24
-     138   00:8263  CD 5C 00                call    LDIRVM
-     139   00:8266                      
-     140   00:8266                          
-     141   00:8266  21 0D B6                ld      hl,screen_data                      ;load screen tile pattern
-     142   00:8269  11 00 18                ld      de,#1800
-     143   00:826C  01 00 03                ld      bc,256*3
-     144   00:826F  CD 5C 00                call    LDIRVM
-     145   00:8272                      
-     146   00:8272  21 0D B9                ld      hl,spr_ball                       ;load ball sprite
-     147   00:8275  11 00 38                ld      de,#3800
-     148   00:8278  01 20 00                ld      bc,8*4
-     149   00:827B  CD 5C 00                call    LDIRVM
-     150   00:827E                      
-     151   00:827E  21 2D B9                ld      hl,spr_ply1_1                       ;load player 1 sprite 1
-     152   00:8281  11 20 38                ld      de,#3820
-     153   00:8284  01 20 00                ld      bc,8*4
-     154   00:8287  CD 5C 00                call    LDIRVM
-     155   00:828A  21 4D B9                ld      hl,spr_ply1_2                       ;load player 1 sprite 2
-     156   00:828D  11 40 38                ld      de,#3840
-     157   00:8290  01 20 00                ld      bc,8*4
-     158   00:8293  CD 5C 00                call    LDIRVM
-     159   00:8296                      
-     160   00:8296  21 6D B9                ld      hl,spr_ply2_1                       ;load player 2 sprite 1
-     161   00:8299  11 60 38                ld      de,#3860
-     162   00:829C  01 20 00                ld      bc,8*4
-     163   00:829F  CD 5C 00                call    LDIRVM
-     164   00:82A2  21 8D B9                ld      hl,spr_ply2_2                       ;load player 2 sprite 2
-     165   00:82A5  11 80 38                ld      de,#3880
-     166   00:82A8  01 20 00                ld      bc,8*4
-     167   00:82AB  CD 5C 00                call    LDIRVM
-     168   00:82AE                      
-     169   00:82AE  C9                      ret
-     170   00:82AF                          
-     171   00:82AF                      
-     172   00:82AF                      initialize_variables:
-     173   00:82AF                          ; ball_x:                 db      30
-     174   00:82AF                          ; ball_y:                 db      100
-     175   00:82AF                          ; ball_speed:             db      1
-     176   00:82AF                          ; computer_speed:         db      1
-     177   00:82AF                          ; ball_bounces:           db      0
-     178   00:82AF                          ; ply1_y:                 db      50
-     179   00:82AF                          ; ply2_y:                 db      80
-     180   00:82AF                          ; goal_status:   
-     181   00:82AF  3E 7E                   ld      a,126
-     182   00:82B1  32 46 BA                ld      (ball_x),a
-     183   00:82B4  3E 60                   ld      a,96
-     184   00:82B6  32 47 BA                ld      (ball_y),a
-     185   00:82B9  32 4C BA                ld      (ply1_y),a
-     186   00:82BC  32 4D BA                ld      (ply2_y),a
-     187   00:82BF  3E 01                   ld      a,1
-     188   00:82C1  32 4A BA                ld      (ball_speed),a
-     189   00:82C4  3E 01                   ld      a,1
-     190   00:82C6  32 4E BA                ld      (computer_speed),a
-     191   00:82C9  3E 00                   ld      a,0
-     192   00:82CB  32 4B BA                ld      (ball_bounces),a
-     193   00:82CE  3E 00                   ld      a,0
-     194   00:82D0  32 4F BA                ld      (goal_status),a
-     195   00:82D3  CD 5A 84                call    update_sprite_attrs
-     196   00:82D6  CD DA 82                call    dump_sprite_attrs_to_ram
-     197   00:82D9  C9                      ret
-     198   00:82DA                      
-     199   00:82DA                      dump_sprite_attrs_to_ram:
-     200   00:82DA  21 52 BA                ld      hl,ball_spr_attr                    ;set ball sprite attributes
-     201   00:82DD  11 00 1B                ld      de,#1b00
-     202   00:82E0  01 04 00                ld      bc,4
-     203   00:82E3                      
-     204   00:82E3  CD 5C 00                call    LDIRVM
-     205   00:82E6  21 56 BA                ld      hl,spr_ply1_1_attr                  ;set attributes for player 1 sprite 1
-     206   00:82E9  11 04 1B                ld      de,#1b04
-     207   00:82EC  01 04 00                ld      bc,4
-     208   00:82EF  CD 5C 00                call    LDIRVM
-     209   00:82F2  21 5A BA                ld      hl,spr_ply1_2_attr                  ;set attributes for player 1 sprite 2
-     210   00:82F5  11 08 1B                ld      de,#1b08
-     211   00:82F8  01 04 00                ld      bc,4
-     212   00:82FB  CD 5C 00                call    LDIRVM
-     213   00:82FE                      
-     214   00:82FE  21 5E BA                ld      hl,spr_ply2_1_attr                  ;set attributes for player 2 sprite 1
-     215   00:8301  11 0C 1B                ld      de,#1b0c
-     216   00:8304  01 04 00                ld      bc,4
-     217   00:8307  CD 5C 00                call    LDIRVM
-     218   00:830A  21 62 BA                ld      hl,spr_ply2_2_attr                  ;set attributes for player 2 sprite 2
-     219   00:830D  11 10 1B                ld      de,#1b10
-     220   00:8310  01 04 00                ld      bc,4
-     221   00:8313  CD 5C 00                call    LDIRVM
-     222   00:8316                      
-     223   00:8316  C9                      ret
-     224   00:8317                      
-     225   00:8317                      ;------------------------------------------------------------------------
-     226   00:8317                      ; Update ball increments
-     227   00:8317                      ;------------------------------------------------------------------------
-     228   00:8317                      update_ball_deltas:
-     229   00:8317  3A 47 BA                ld      a,(ball_y)                          ;load ball y position into a registry
-     230   00:831A  FE B2                   cp      178                                 ;compare with 178 (max y is 191)
-     231   00:831C  30 05                   jr      nc,change_ball_delta_y              ;jump if y position greater
-     232   00:831E  FE 06                   cp      6                                   ;compare with 6
-     233   00:8320  38 01                   jr      c,change_ball_delta_y               ;jump if lower
-     234   00:8322                      
-     235   00:8322                      check_delta_x:
-     236   00:8322                          ; ld      a,(ball_x)
-     237   00:8322                          ; cp      247
-     238   00:8322                          ; jp      END
-     239   00:8322                          ; cp      4
-     240   00:8322                          ; jp      END
-     241   00:8322                      delta_ret:
-     242   00:8322  C9                      ret
-     243   00:8323                      
-     244   00:8323                      change_ball_delta_y:
-     245   00:8323                          ; ld      a,(ball_bounces)
-     246   00:8323                          ; inc     a
-     247   00:8323                          ; ld      (ball_bounces),a
-     248   00:8323  3A 49 BA                ld      a,(ball_y_inc)                      
-     249   00:8326  FE 01                   cp      1
-     250   00:8328  28 0F                   jr      z,change_ball_delta_y_negative
-     251   00:832A  3A 47 BA                ld      a,(ball_y)                          ;substract a pixel from x
-     252   00:832D  87                      add     a
-     253   00:832E  32 47 BA                ld      (ball_y),a                          ;end of substract
-     254   00:8331  3E 01                   ld      a,1
-     255   00:8333  32 49 BA                ld      (ball_y_inc),a
-     256   00:8336  C3 22 83                jp      check_delta_x
-     257   00:8339                      change_ball_delta_y_negative:
-     258   00:8339  3A 47 BA                ld      a,(ball_y)                          ;add a pixel to y
-     259   00:833C  3D                      dec     a
-     260   00:833D  32 47 BA                ld      (ball_y),a
-     261   00:8340  3E 00                   ld      a,0                                 ;now change delta
-     262   00:8342  32 49 BA                ld      (ball_y_inc),a
-     263   00:8345  C3 22 83                jp      check_delta_x
-     264   00:8348                      
-     265   00:8348                      ; change_ball_delta_x:
-     266   00:8348                      ;     ld      a,(ball_bounces)
-     267   00:8348                      ;     inc     a
-     268   00:8348                      ;     ld      (ball_bounces),a
-     269   00:8348                      ;     ld      a,(ball_x_inc)                      
-     270   00:8348                      ;     cp      1
-     271   00:8348                      ;     jr      z,change_ball_delta_x_negative
-     272   00:8348                      ;     ld      a,(ball_x)                          ;substract a pixel from x
-     273   00:8348                      ;     add     a
-     274   00:8348                      ;     ld      (ball_x),a                          ;end of substract
-     275   00:8348                      ;     ld      a,1
-     276   00:8348                      ;     ld      (ball_x_inc),a
-     277   00:8348                      ;     jp      delta_ret
-     278   00:8348                      ; change_ball_delta_x_negative:
-     279   00:8348                      ;     ld      a,(ball_x)                          ;add a pixel to x
-     280   00:8348                      ;     dec     a
-     281   00:8348                      ;     ld      (ball_x),a
-     282   00:8348                      ;     ld      a,0                                 ;now change delta
-     283   00:8348                      ;     ld      (ball_x_inc),a
-     284   00:8348                      ;     jp      delta_ret
-     285   00:8348                      
-     286   00:8348                      ;------------------------------------------------------------------------
-     287   00:8348                      ; Update ball position
-     288   00:8348                      ;------------------------------------------------------------------------
-     289   00:8348                      update_ball_position:
-     290   00:8348  3A 49 BA                ld      a,(ball_y_inc)
-     291   00:834B  FE 01                   cp      1
-     292   00:834D  CA 79 83                jp      z,ball_y_increase
-     293   00:8350                      
-     294   00:8350  3A 4A BA                ld      a,(ball_speed)
-     295   00:8353  47                      ld      b,a
-     296   00:8354  3A 47 BA                ld      a,(ball_y)
-     297   00:8357  CD A2 83                call    loop_position_decrement
-     298   00:835A  32 47 BA                ld      (ball_y),a
-     299   00:835D                      
-     300   00:835D                      update_pos_x:    
-     301   00:835D  3A 48 BA                ld      a,(ball_x_inc)
-     302   00:8360  FE 01                   cp      1
-     303   00:8362  28 24                   jr      z,ball_x_increase
-     304   00:8364                          
-     305   00:8364  3A 4A BA                ld      a,(ball_speed)
-     306   00:8367  47                      ld      b,a
-     307   00:8368  3A 46 BA                ld      a,(ball_x)
-     308   00:836B  CD A2 83                call    loop_position_decrement
-     309   00:836E  FE F9                   cp      249 ;ojo
-     310   00:8370                          ; call    nc,goal_player_2
-     311   00:8370  06 02                   ld      b,2
-     312   00:8372  D4 A6 83                call    nc,change_goal_status
-     313   00:8375  32 46 BA                ld      (ball_x),a
-     314   00:8378                      update_ret:
-     315   00:8378  C9                      ret
-     316   00:8379                      
-     317   00:8379                      
-     318   00:8379                      ball_y_increase:
-     319   00:8379  3A 4A BA                ld      a,(ball_speed)
-     320   00:837C  47                      ld      b,a
-     321   00:837D  3A 47 BA                ld      a,(ball_y)
-     322   00:8380  CD 9E 83                call    loop_position_increment
-     323   00:8383  32 47 BA                ld      (ball_y),a
-     324   00:8386  18 D5                   jr      update_pos_x
-     325   00:8388                      
-     326   00:8388                      ball_x_increase:
-     327   00:8388  3A 4A BA                ld      a,(ball_speed)
-     328   00:838B  47                      ld      b,a
-     329   00:838C  3A 46 BA                ld      a,(ball_x)
-     330   00:838F  CD 9E 83                call    loop_position_increment
-     331   00:8392  FE F9                   cp      249
-     332   00:8394                          ; call    nc,goal_player_1
-     333   00:8394  06 01                   ld      b,1
-     334   00:8396  D4 A6 83                call    nc,change_goal_status
-     335   00:8399  32 46 BA                ld      (ball_x),a
-     336   00:839C  18 DA                   jr      update_ret
-     337   00:839E                      
-     338   00:839E                      
-     339   00:839E                      loop_position_increment
-     340   00:839E  3C                      inc     a
-     341   00:839F  10 FD                   djnz    loop_position_increment
-     342   00:83A1  C9                      ret
-     343   00:83A2                      
-     344   00:83A2                      loop_position_decrement
-     345   00:83A2  3D                      dec     a
-     346   00:83A3  10 FD                   djnz    loop_position_decrement
-     347   00:83A5  C9                      ret
-     348   00:83A6                      
-     349   00:83A6                      change_goal_status:
-     350   00:83A6  F5                      push    af
-     351   00:83A7  78                      ld      a,b
-     352   00:83A8  32 4F BA                ld      (goal_status),a
-     353   00:83AB  F1                      pop     af
-     354   00:83AC  C9                      ret
-     355   00:83AD                      reset_goal_status
-     356   00:83AD  F5                      push    af
-     357   00:83AE  3E 00                   ld      a,0
-     358   00:83B0  32 4F BA                ld      (goal_status),a
-     359   00:83B3  F1                      pop     af
-     360   00:83B4  C9                      ret
-     361   00:83B5                      
-     362   00:83B5                      ;------------------------------------------------------------------------
-     363   00:83B5                      ; Update computer player
-     364   00:83B5                      ;------------------------------------------------------------------------
-     365   00:83B5                      update_computer_player:
-     366   00:83B5  3A 4D BA                ld      a,(ply2_y)
-     367   00:83B8  47                      ld      b,a
-     368   00:83B9  3A 47 BA                ld      a,(ball_y)
-     369   00:83BC  B8                      cp      b
-     370   00:83BD  28 1A                   jr      z,update_computer_player_finish
-     371   00:83BF  38 0D                   jr      c,update_computer_player_decrease
-     372   00:83C1  3A 4E BA                ld      a,(computer_speed)
-     373   00:83C4  47                      ld      b,a
-     374   00:83C5  3A 4D BA                ld      a,(ply2_y)
-     375   00:83C8  80                      add     a,b
-     376   00:83C9  32 4D BA                ld      (ply2_y),a
-     377   00:83CC  18 0B                   jr      update_computer_player_finish
-     378   00:83CE                      update_computer_player_decrease:
-     379   00:83CE  3A 4E BA                ld      a,(computer_speed)
-     380   00:83D1  47                      ld      b,a
-     381   00:83D2  3A 4D BA                ld      a,(ply2_y)
-     382   00:83D5  90                      sub     a,b
-     383   00:83D6  32 4D BA                ld      (ply2_y),a
-     384   00:83D9                      update_computer_player_finish
-     385   00:83D9  C9                      ret
-     386   00:83DA                      
-     387   00:83DA                      ;------------------------------------------------------------------------
-     388   00:83DA                      ; Update Player from controls
-     389   00:83DA                      ;------------------------------------------------------------------------
-     390   00:83DA                      update_player_1_controls
-     391   00:83DA  AF                      xor     a
-     392   00:83DB  CD D5 00                call    GTSTCK
-     393   00:83DE  FE 01                   cp      1
-     394   00:83E0  28 06                   jr      z,move_player_1_up
-     395   00:83E2  FE 05                   cp      5
-     396   00:83E4  28 15                   jr      z,move_player_1_down
-     397   00:83E6  18 24                   jr      update_player_1_controls_finish
-     398   00:83E8                      move_player_1_up
-     399   00:83E8  3A 4C BA                ld      a,(ply1_y)
-     400   00:83EB  D6 03                   sub     a,3
-     401   00:83ED  32 4C BA                ld      (ply1_y),a
-     402   00:83F0  FE 10                   cp      16
-     403   00:83F2  30 18                   jr      nc,update_player_1_controls_finish
-     404   00:83F4  3E 10                   ld      a,16
-     405   00:83F6  32 4C BA                ld      (ply1_y),a
-     406   00:83F9  18 11                   jr      update_player_1_controls_finish
-     407   00:83FB                      move_player_1_down
-     408   00:83FB  3A 4C BA                ld      a,(ply1_y)
-     409   00:83FE  C6 03                   add     a,3
-     410   00:8400  32 4C BA                ld      (ply1_y),a
-     411   00:8403  FE AF                   cp      175
-     412   00:8405  38 05                   jr      c,update_player_1_controls_finish
-     413   00:8407  3E AF                   ld      a,175
-     414   00:8409  32 4C BA                ld      (ply1_y),a
-     415   00:840C                      update_player_1_controls_finish:
-     416   00:840C  C9                      ret
-     417   00:840D                      
-     418   00:840D                      ;------------------------------------------------------------------------
-     419   00:840D                      ; Check collisions
-     420   00:840D                      ;------------------------------------------------------------------------
-     421   00:840D                      check_collisions:
-     422   00:840D  3A E7 F3                ld      a,(STATFL)
-     423   00:8410  CB 6F                   bit     5,a
-     424   00:8412  28 45                   jr      z,check_collisions_end
-     425   00:8414                      
-     426   00:8414  3A 4B BA                ld      a,(ball_bounces)                    ;increase ball bounces
-     427   00:8417  3C                      inc     a
-     428   00:8418  32 4B BA                ld      (ball_bounces),a
-     429   00:841B  3A 4A BA                ld      a,(ball_speed)                      ;if ball speed is equal a number, continue
-     430   00:841E  FE 04                   cp      4
-     431   00:8420  28 1A                   jr      z,continue_collision
-     432   00:8422  3A 4B BA                ld      a,(ball_bounces)                    ;if ball bounces dont reach a number, continue
-     433   00:8425  FE 04                   cp      4
-     434   00:8427  20 13                   jr      nz,continue_collision
-     435   00:8429  3E 00                   ld      a,0                                 ;reset ball bounces to 0
-     436   00:842B  32 4B BA                ld      (ball_bounces),a
-     437   00:842E  3A 4A BA                ld      a,(ball_speed)                      ;increase ball speed
-     438   00:8431  3C                      inc     a
-     439   00:8432  32 4A BA                ld      (ball_speed),a
-     440   00:8435  FE 04                   cp      4                                   ;increase computer speed if it lower than 3
-     441   00:8437  30 03                   jr      nc,continue_collision
-     442   00:8439  32 4E BA                ld      (computer_speed),a
-     443   00:843C                      
-     444   00:843C                      continue_collision:
-     445   00:843C  3A 48 BA                ld      a,(ball_x_inc)
-     446   00:843F  FE 01                   cp      1
-     447   00:8441  28 0C                   jr      z,ball_collision_set_decrease
-     448   00:8443                      
-     449   00:8443                          ; ld      a,(ball_x)
-     450   00:8443                          ; cp      #F8
-     451   00:8443                          ; jr      nc,check_collisions_end
-     452   00:8443                      
-     453   00:8443  3E 01                   ld      a,1
-     454   00:8445  32 48 BA                ld      (ball_x_inc),a
-     455   00:8448  3E 09                   ld      a,9
-     456   00:844A  32 46 BA                ld      (ball_x),a
-     457   00:844D  18 0A                   jr      check_collisions_end
-     458   00:844F                      ball_collision_set_decrease:
-     459   00:844F  3E 00                   ld      a,0
-     460   00:8451  32 48 BA                ld      (ball_x_inc),a
-     461   00:8454  3E F0                   ld      a,240
-     462   00:8456  32 46 BA                ld      (ball_x),a
-     463   00:8459                      check_collisions_end:
-     464   00:8459  C9                      ret
-     465   00:845A                      
-     466   00:845A                      ;------------------------------------------------------------------------
-     467   00:845A                      ; Update sprite attributes
-     468   00:845A                      ;------------------------------------------------------------------------
-     469   00:845A                      update_sprite_attrs:
-     470   00:845A  DD 21 52 BA             ld      ix,ball_spr_attr    ; Update ball attrs
-     471   00:845E  3A 47 BA                ld      a,(ball_y)          ; ball Y coordinate
-     472   00:8461  DD 77 00                ld      (ix+0),a
-     473   00:8464  3A 46 BA                ld      a,(ball_x)          ; ball X coordinate
-     474   00:8467  DD 77 01                ld      (ix+1),a
-     475   00:846A                      
-     476   00:846A  DD 21 5A BA             ld      ix,spr_ply1_2_attr  ; Update player 1 attrs
-     477   00:846E  3A 4C BA                ld      a,(ply1_y)          ; player 1 Y coordinate
-     478   00:8471  DD 77 00                ld      (ix+0),a
-     479   00:8474  DD 21 56 BA             ld      ix,spr_ply1_1_attr  ; Update player 1 attrs
-     480   00:8478  D6 10                   sub     a,16
-     481   00:847A  DD 77 00                ld      (ix+0),a
-     482   00:847D                      
-     483   00:847D  DD 21 62 BA             ld      ix,spr_ply2_2_attr  ; Update player 2 attrs
-     484   00:8481  3A 4D BA                ld      a,(ply2_y)          ; player 2 Y coordinate
-     485   00:8484  DD 77 00                ld      (ix+0),a
-     486   00:8487  DD 21 5E BA             ld      ix,spr_ply2_1_attr  ; Update player 2 attrs
-     487   00:848B  D6 10                   sub     a,16
-     488   00:848D  DD 77 00                ld      (ix+0),a
-     489   00:8490  C9                      ret
-     490   00:8491                      
-     491   00:8491                      ;------------------------------------------------------------------------
-     492   00:8491                      ; Check Goals
-     493   00:8491                      ;------------------------------------------------------------------------
-     494   00:8491                      check_goal_status:
-     495   00:8491  3A 4F BA                ld      a,(goal_status)
-     496   00:8494  FE 01                   cp      1
-     497   00:8496  CC AE 84                call    z,goal_player_1
-     498   00:8499  3A 4F BA                ld      a,(goal_status)
-     499   00:849C  FE 02                   cp      2
-     500   00:849E  CC 05 85                call    z,goal_player_2
-     501   00:84A1  CD AD 83                call    reset_goal_status
-     502   00:84A4  CD 59 85                call    hide_ball
-     503   00:84A7  CD 07 86                call    delay_wait_long
-     504   00:84AA  CD AF 82                call    initialize_variables
-     505   00:84AD  C9                      ret
-     506   00:84AE                      
-     507   00:84AE                      ;------------------------------------------------------------------------
-     508   00:84AE                      ; Player 1 Goal
-     509   00:84AE                      ;------------------------------------------------------------------------
-     510   00:84AE                      goal_player_1:
-     511   00:84AE  CD 59 85                call    hide_ball
-     512   00:84B1                      
-     513   00:84B1  3A 50 BA                ld      a,(player_1_score)
-     514   00:84B4  CD A9 85                call    get_score_marker
-     515   00:84B7                      
-     516   00:84B7  21 6C 18                ld      hl,#186C
-     517   00:84BA  54                      ld      d,h
-     518   00:84BB  5D                      ld      e,l
-     519   00:84BC  E5                      push    hl
-     520   00:84BD  21 AE B9                ld      hl,tile_marker_blur
-     521   00:84C0  CD 75 85                call    marker_change
-     522   00:84C3  E1                      pop     hl
-     523   00:84C4  CD 03 86                call    delay_wait_short
-     524   00:84C7                          
-     525   00:84C7  3A 50 BA                ld      a,(player_1_score)
-     526   00:84CA  CD A9 85                call    get_score_marker
-     527   00:84CD  54                      ld      d,h
-     528   00:84CE  5D                      ld      e,l
-     529   00:84CF  E5                      push    hl
-     530   00:84D0  21 AF B9                ld      hl,tile_marker_off
-     531   00:84D3  CD 75 85                call    marker_change
-     532   00:84D6  E1                      pop     hl
-     533   00:84D7  CD 03 86                call    delay_wait_short
-     534   00:84DA                      
-     535   00:84DA  3A 50 BA                ld      a,(player_1_score)
-     536   00:84DD  3C                      inc     a
-     537   00:84DE  32 50 BA                ld      (player_1_score),a
-     538   00:84E1                      
-     539   00:84E1  3A 50 BA                ld      a,(player_1_score)
-     540   00:84E4  CD A9 85                call    get_score_marker
-     541   00:84E7  54                      ld      d,h
-     542   00:84E8  5D                      ld      e,l
-     543   00:84E9  E5                      push    hl
-     544   00:84EA  21 AE B9                ld      hl,tile_marker_blur
-     545   00:84ED  CD 75 85                call    marker_change
-     546   00:84F0  E1                      pop     hl
-     547   00:84F1  CD 03 86                call    delay_wait_short
-     548   00:84F4                      
-     549   00:84F4  3A 50 BA                ld      a,(player_1_score)
-     550   00:84F7  CD A9 85                call    get_score_marker
-     551   00:84FA  54                      ld      d,h
-     552   00:84FB  5D                      ld      e,l
-     553   00:84FC  E5                      push    hl
-     554   00:84FD  21 AD B9                ld      hl,tile_marker_on
-     555   00:8500  CD 75 85                call    marker_change
-     556   00:8503  E1                      pop     hl
-     557   00:8504                      
-     558   00:8504  C9                      ret
-     559   00:8505                      
-     560   00:8505                      ;------------------------------------------------------------------------
-     561   00:8505                      ; Player 2 Goal
-     562   00:8505                      ;------------------------------------------------------------------------
-     563   00:8505                      goal_player_2:
-     564   00:8505  3A 51 BA                ld      a,(player_2_score)
-     565   00:8508  CD A9 85                call    get_score_marker
-     566   00:850B                      
-     567   00:850B  21 71 18                ld      hl,#1871
-     568   00:850E  54                      ld      d,h
-     569   00:850F  5D                      ld      e,l
-     570   00:8510  E5                      push    hl
-     571   00:8511  21 AE B9                ld      hl,tile_marker_blur
-     572   00:8514  CD 75 85                call    marker_change
-     573   00:8517  E1                      pop     hl
-     574   00:8518  CD 03 86                call    delay_wait_short
-     575   00:851B                          
-     576   00:851B  3A 51 BA                ld      a,(player_2_score)
-     577   00:851E  CD A9 85                call    get_score_marker
-     578   00:8521  54                      ld      d,h
-     579   00:8522  5D                      ld      e,l
-     580   00:8523  E5                      push    hl
-     581   00:8524  21 AF B9                ld      hl,tile_marker_off
-     582   00:8527  CD 75 85                call    marker_change
-     583   00:852A  E1                      pop     hl
-     584   00:852B  CD 03 86                call    delay_wait_short
-     585   00:852E                      
-     586   00:852E  3A 51 BA                ld      a,(player_2_score)
-     587   00:8531  3C                      inc     a
-     588   00:8532  32 51 BA                ld      (player_2_score),a
-     589   00:8535                      
-     590   00:8535  3A 51 BA                ld      a,(player_2_score)
-     591   00:8538  CD A9 85                call    get_score_marker
-     592   00:853B  54                      ld      d,h
-     593   00:853C  5D                      ld      e,l
-     594   00:853D  E5                      push    hl
-     595   00:853E  21 AE B9                ld      hl,tile_marker_blur
-     596   00:8541  CD 75 85                call    marker_change
-     597   00:8544  E1                      pop     hl
-     598   00:8545  CD 03 86                call    delay_wait_short
-     599   00:8548                      
-     600   00:8548  3A 51 BA                ld      a,(player_2_score)
-     601   00:854B  CD A9 85                call    get_score_marker
-     602   00:854E  54                      ld      d,h
-     603   00:854F  5D                      ld      e,l
-     604   00:8550  E5                      push    hl
-     605   00:8551  21 AD B9                ld      hl,tile_marker_on
-     606   00:8554  CD 75 85                call    marker_change
-     607   00:8557  E1                      pop     hl
-     608   00:8558                      
-     609   00:8558  C9                      ret
-     610   00:8559                      
-     611   00:8559                      hide_ball:
-     612   00:8559  3E C0                   ld      a,192               ;put ball sprite Y under screen limit
-     613   00:855B  32 47 BA                ld      (ball_y),a
-     614   00:855E  DD 21 52 BA             ld      ix,ball_spr_attr    ;Update ball sprite attrs
-     615   00:8562  3A 47 BA                ld      a,(ball_y)
-     616   00:8565  DD 77 00                ld      (ix+0),a
-     617   00:8568  21 52 BA                ld      hl,ball_spr_attr    ;dump ball sprite attributes to VRAM
-     618   00:856B  11 00 1B                ld      de,#1b00
-     619   00:856E  01 02 00                ld      bc,2
-     620   00:8571  CD 5C 00                call    LDIRVM
-     621   00:8574  C9                      ret
-     622   00:8575                      
-     623   00:8575                      ;------------------------------------------------------------------------
-     624   00:8575                      ; Routines for changing the Score markers
-     625   00:8575                      ;------------------------------------------------------------------------
-     626   00:8575                      marker_change
-     627   00:8575  3E 05                   ld      a,5
-     628   00:8577  06 03                   ld      b,3
-     629   00:8579                      marker_change_ini:
-     630   00:8579  F5                      push    af
-     631   00:857A                      marker_change_step:
-     632   00:857A  C5                      push    bc
-     633   00:857B  44                      ld      b,h
-     634   00:857C  4D                      ld      c,l
-     635   00:857D  E5                      push    hl
-     636   00:857E  60                      ld      h,b
-     637   00:857F  69                      ld      l,c
-     638   00:8580  DD CB 00 46             bit     0,(ix)
-     639   00:8584  C4 9E 85                call    nz,change_marker_tile
-     640   00:8587  E1                      pop     hl
-     641   00:8588  C1                      pop     bc
-     642   00:8589  DD 23                   inc     ix
-     643   00:858B  13                      inc     de
-     644   00:858C  05                      dec     b
-     645   00:858D  20 EB                   jr      nz,marker_change_step
-     646   00:858F  06 03                   ld      b,3
-     647   00:8591                      
-     648   00:8591  E5                      push    hl
-     649   00:8592  21 1D 00                ld      hl,29
-     650   00:8595  19                      add     hl,de
-     651   00:8596  54                      ld      d,h
-     652   00:8597  5D                      ld      e,l
-     653   00:8598  E1                      pop     hl
-     654   00:8599                          
-     655   00:8599  F1                      pop     af
-     656   00:859A  3D                      dec     a
-     657   00:859B  20 DC                   jr      nz,marker_change_ini
-     658   00:859D  C9                      ret
-     659   00:859E                      
-     660   00:859E                      
-     661   00:859E                      change_marker_tile:
-     662   00:859E  D5                      push    de
-     663   00:859F  C5                      push    bc
-     664   00:85A0  01 01 00                ld      bc,1
-     665   00:85A3  CD 5C 00                call    LDIRVM
-     666   00:85A6  C1                      pop     bc
-     667   00:85A7  D1                      pop     de
-     668   00:85A8  C9                      ret
-     669   00:85A9                      
-     670   00:85A9                      get_score_marker:
-     671   00:85A9  FE 00                   cp      0
-     672   00:85AB  28 24                   jr      z,get_score_marker_0
-     673   00:85AD  FE 01                   cp      1
-     674   00:85AF  28 25                   jr      z,get_score_marker_1
-     675   00:85B1  FE 02                   cp      2
-     676   00:85B3  28 26                   jr      z,get_score_marker_2
-     677   00:85B5  FE 03                   cp      3
-     678   00:85B7  28 27                   jr      z,get_score_marker_3
-     679   00:85B9  FE 04                   cp      4
-     680   00:85BB  28 28                   jr      z,get_score_marker_4
-     681   00:85BD  FE 05                   cp      5
-     682   00:85BF  28 29                   jr      z,get_score_marker_5
-     683   00:85C1  FE 06                   cp      6
-     684   00:85C3  28 2A                   jr      z,get_score_marker_6
-     685   00:85C5  FE 07                   cp      7
-     686   00:85C7  28 2B                   jr      z,get_score_marker_7
-     687   00:85C9  FE 08                   cp      8
-     688   00:85CB  28 2C                   jr      z,get_score_marker_8
-     689   00:85CD  FE 09                   cp      9
-     690   00:85CF  28 2D                   jr      z,get_score_marker_9
-     691   00:85D1                      get_score_marker_0:
-     692   00:85D1  DD 21 B0 B9             ld      ix,marker_0
-     693   00:85D5  C9                      ret
-     694   00:85D6                      get_score_marker_1:
-     695   00:85D6  DD 21 BF B9             ld      ix,marker_1
-     696   00:85DA  C9                      ret
-     697   00:85DB                      get_score_marker_2:
-     698   00:85DB  DD 21 CE B9             ld      ix,marker_2
-     699   00:85DF  C9                      ret
-     700   00:85E0                      get_score_marker_3:
-     701   00:85E0  DD 21 DD B9             ld      ix,marker_3
-     702   00:85E4  C9                      ret
-     703   00:85E5                      get_score_marker_4:
-     704   00:85E5  DD 21 EC B9             ld      ix,marker_4
-     705   00:85E9  C9                      ret
-     706   00:85EA                      get_score_marker_5:
-     707   00:85EA  DD 21 FB B9             ld      ix,marker_5
-     708   00:85EE  C9                      ret
-     709   00:85EF                      get_score_marker_6:
-     710   00:85EF  DD 21 0A BA             ld      ix,marker_6
-     711   00:85F3  C9                      ret
-     712   00:85F4                      get_score_marker_7:
-     713   00:85F4  DD 21 19 BA             ld      ix,marker_7
-     714   00:85F8  C9                      ret
-     715   00:85F9                      get_score_marker_8:
-     716   00:85F9  DD 21 28 BA             ld      ix,marker_8
-     717   00:85FD  C9                      ret
-     718   00:85FE                      get_score_marker_9:
-     719   00:85FE  DD 21 37 BA             ld      ix,marker_9
-     720   00:8602  C9                      ret
-     721   00:8603                      
-     722   00:8603                      
-     723   00:8603                      ;------------------------------------------------------------------------
-     724   00:8603                      ; Delay Wait
-     725   00:8603                      ;------------------------------------------------------------------------
-     726   00:8603                      delay_wait_short:
-     727   00:8603  06 05                   ld      b,5
-     728   00:8605  18 02                   jr      delay_wait_sync
-     729   00:8607                      delay_wait_long:
-     730   00:8607  06 3C                   ld      b,60
-     731   00:8609                      delay_wait_sync:
-     732   00:8609  76                      halt
-     733   00:860A  10 FD                   djnz    delay_wait_sync
-     734   00:860C  C9                      ret
-     735   00:860D                          
-     736   00:860D                      
-     737   00:860D                      ;------------------------------------------------------------------------
-     738   00:860D                      ; CONSTANTS
-     739   00:860D                      ;------------------------------------------------------------------------
-     740   00:860D                      
-     741   00:860D                      ;Tiles
-     742   00:860D  (1800)              tiles_data:             incbin "bin/pong_tiles.til"
-     743   00:9E0D  (1800)              tiles_color:            incbin "bin/pong_tiles.col"
-     744   00:B60D  (0300)              screen_data:            incbin "bin/pong_screen.dat"
-     745   00:B90D                      
-     746   00:B90D                      ;Sprites - Ball
-     747   00:B90D                      ;spr_ball_1:             db  #07,#1F,#33,#6F,#7F,#FF,#FF,#FF,#FF,#FF,#7F,#7F,#3F,#1F,#07,#00,#C0,#F0,#F8,#FC,#FC,#FE,#FE,#FE,#FE,#FE,#FC,#FC,#F8,#F0,#C0,#00
-     748   00:B90D                      
-     749   00:B90D                      spr_ball:               db #38,#7C,#FE,#FE,#FE,#7C,#38,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
-     749   00:B90D  38 7C FE FE FE 7C 38 00 00 00 00 00 00 00 00 00 
-     749   00:B91D  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
-     750   00:B92D                      
-     751   00:B92D                      ; Sprites - Player 1
-     752   00:B92D                      spr_ply1_1:             db #18,#38,#78,#78,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
-     752   00:B92D  18 38 78 78 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 
-     752   00:B93D  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
-     753   00:B94D                      spr_ply1_2:             db #F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#78,#78,#38,#18,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
-     753   00:B94D  F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 78 78 38 18 
-     753   00:B95D  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
-     754   00:B96D                      
-     755   00:B96D                      ; Sprites - Player 2
-     756   00:B96D                      spr_ply2_1:             db #C0,#E0,#F0,#F0,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
-     756   00:B96D  C0 E0 F0 F0 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 
-     756   00:B97D  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
-     757   00:B98D                      spr_ply2_2:             db #F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F0,#F0,#E0,#C0,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
-     757   00:B98D  F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F0 F0 E0 C0 
-     757   00:B99D  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
-     758   00:B9AD                      
-     759   00:B9AD                      ; Marker tile position
-     760   00:B9AD  08                  tile_marker_on:         db #08
-     761   00:B9AE  28                  tile_marker_blur:       db #28
-     762   00:B9AF  30                  tile_marker_off:        db #30
-     763   00:B9B0                      
-     764   00:B9B0                      ; Markers
-     765   00:B9B0                      ; marker_0:               db #7B,#6F
-     766   00:B9B0                      ; marker_0_blur:          db #28,#28,#28,#28,#30,#28,#28,#30,#28,#28,#30,#28,#28,#28,#28
-     767   00:B9B0                      marker_0:          db 1,1,1,1,0,1,1,0,1,1,0,1,1,1,1
-     767   00:B9B0  01 01 01 01 00 01 01 00 01 01 00 01 01 01 01 
-     768   00:B9BF                      marker_1:          db 0,0,1,0,0,1,0,0,1,0,0,1,0,0,1
-     768   00:B9BF  00 00 01 00 00 01 00 00 01 00 00 01 00 00 01 
-     769   00:B9CE                      marker_2:          db 1,1,1,0,0,1,1,1,1,1,0,0,1,1,1
-     769   00:B9CE  01 01 01 00 00 01 01 01 01 01 00 00 01 01 01 
-     770   00:B9DD                      marker_3:          db 1,1,1,0,0,1,0,1,1,0,0,1,1,1,1
-     770   00:B9DD  01 01 01 00 00 01 00 01 01 00 00 01 01 01 01 
-     771   00:B9EC                      marker_4:          db 1,0,1,1,0,1,1,1,1,0,0,1,0,0,1
-     771   00:B9EC  01 00 01 01 00 01 01 01 01 00 00 01 00 00 01 
-     772   00:B9FB                      marker_5:          db 1,1,1,1,0,0,1,1,1,0,0,1,1,1,1
-     772   00:B9FB  01 01 01 01 00 00 01 01 01 00 00 01 01 01 01 
-     773   00:BA0A                      marker_6:          db 1,1,1,1,0,0,1,1,1,1,0,1,1,1,1
-     773   00:BA0A  01 01 01 01 00 00 01 01 01 01 00 01 01 01 01 
-     774   00:BA19                      marker_7:          db 1,1,1,0,0,1,0,0,1,0,0,1,0,0,1
-     774   00:BA19  01 01 01 00 00 01 00 00 01 00 00 01 00 00 01 
-     775   00:BA28                      marker_8:          db 1,1,1,1,0,1,1,1,1,1,0,1,1,1,1
-     775   00:BA28  01 01 01 01 00 01 01 01 01 01 00 01 01 01 01 
-     776   00:BA37                      marker_9:          db 1,1,1,1,0,1,1,1,1,0,0,1,1,1,1
-     776   00:BA37  01 01 01 01 00 01 01 01 01 00 00 01 01 01 01 
-     777   00:BA46                      
-     778   00:BA46                      ;------------------------------------------------------------------------
-     779   00:BA46                      ; VARIABLE DEFINITION
-     780   00:BA46                      ;------------------------------------------------------------------------
-     781   00:BA46  1E                  ball_x:                 db      30
-     782   00:BA47  64                  ball_y:                 db      100
-     783   00:BA48  01                  ball_x_inc:             db      1
-     784   00:BA49  01                  ball_y_inc:             db      1
-     785   00:BA4A  01                  ball_speed:             db      1
-     786   00:BA4B  00                  ball_bounces:           db      0
-     787   00:BA4C  32                  ply1_y:                 db      50
-     788   00:BA4D  50                  ply2_y:                 db      80
-     789   00:BA4E  01                  computer_speed:         db      1
-     790   00:BA4F  00                  goal_status:            db      0                   ; 0:no goal, 1:goal player 1, 2:goal player 2
-     791   00:BA50  00                  player_1_score:         db      0
-     792   00:BA51  00                  player_2_score:         db      0
-     793   00:BA52                      
-     794   00:BA52                      ;ball_spr_attr:          ds      4,0                    ;Y, X, escena, color
-     795   00:BA52  5F 7A 00 0F         ball_spr_attr:          db      95, 122, #0, #0F        ;Y, X, escena, color
-     796   00:BA56                      
-     797   00:BA56  40 04 04 06         spr_ply1_1_attr:        db      64, 4, 4, 6        ;Y, X, escena, color
-     798   00:BA5A  50 04 08 06         spr_ply1_2_attr:        db      80, 4, 8, 6        ;Y, X, escena, color
-     799   00:BA5E                      
-     800   00:BA5E  4F F7 0C 07         spr_ply2_1_attr:        db      79, 247, 12, 7        ;Y, X, escena, color
-     801   00:BA62  5F F7 10 07         spr_ply2_2_attr:        db      95, 247, 16, 7        ;Y, X, escena, color
-     802   00:BA66                      
-     803   00:BA66                      
-     804   00:BA66                      END:
-     805   00:BA66  C9                      ret
+      68   00:8200  CD 5F 82                call    initialize_video
+      69   00:8203  CD 72 82                call    initialize_tiles_and_sprites
+      70   00:8206  CD D3 82                call    initialize_variables
+      71   00:8209  CD 7C 84                call    update_sprite_attrs
+      72   00:820C  CD FC 82                call    dump_sprite_attrs_to_ram
+      73   00:820F  CD 3A 86                call    delay_wait_long
+      74   00:8212  3E 00                   ld      a,0
+      75   00:8214  32 85 BA                ld      (player_winner),a
+      76   00:8217                          ; call    CHGET
+      77   00:8217                      
+      78   00:8217                      loop:
+      79   00:8217  76                      halt
+      80   00:8218  CD 2F 84                call    check_collisions
+      81   00:821B  CD 39 83                call    update_ball_deltas
+      82   00:821E  CD 6A 83                call    update_ball_position
+      83   00:8221  CD D7 83                call    update_computer_player
+      84   00:8224  CD FC 83                call    update_player_1_controls
+      85   00:8227  CD 7C 84                call    update_sprite_attrs
+      86   00:822A  CD FC 82                call    dump_sprite_attrs_to_ram
+      87   00:822D  3A 82 BA                ld      a,(goal_status)
+      88   00:8230  FE 00                   cp      0
+      89   00:8232  C4 B3 84                call    nz,check_goal_status
+      90   00:8235  3A 85 BA                ld      a,(player_winner)
+      91   00:8238  FE 00                   cp      0
+      92   00:823A  20 0A                   jr      nz,endgame
+      93   00:823C                      
+      94   00:823C                      pausemode:
+      95   00:823C  3A EC FB                ld	    a,(KEYMTX+7)                        ;escape key is in row 7...
+      96   00:823F  CB 57               	bit	    2,a                                 ;...bit 2. If it's pressed...
+      97   00:8241  CA 5E 82            	jp	    z,exit                              ;...jump to exit
+      98   00:8244                      
+      99   00:8244                          ; jr      pausemode
+     100   00:8244                      
+     101   00:8244                          ;salir al meter un gol
+     102   00:8244                          ; ld      a,(goal_status)
+     103   00:8244                          ; cp      0
+     104   00:8244                          ; jr      z,loop
+     105   00:8244                      
+     106   00:8244                          ;test incremento marcadores
+     107   00:8244                          ; ld	    a,(KEYMTX+5)
+     108   00:8244                      	; bit	    7,a
+     109   00:8244                          ; call    z,goal_player_1
+     110   00:8244                          ; jr      pausemode
+     111   00:8244                      
+     112   00:8244  18 D1                   jr      loop
+     113   00:8246                      
+     114   00:8246                      endgame:
+     115   00:8246  3E D7                   ld      a,215
+     116   00:8248  32 7A BA                ld      (ball_y),a
+     117   00:824B  32 7F BA                ld      (ply1_y),a
+     118   00:824E  32 80 BA                ld      (ply2_y),a
+     119   00:8251  CD 7C 84                call    update_sprite_attrs
+     120   00:8254  CD FC 82                call    dump_sprite_attrs_to_ram
+     121   00:8257  3A ED FB                ld	    a,(KEYMTX+8)
+     122   00:825A  CB 47               	bit	    0,a
+     123   00:825C  20 E8                   jr      nz,endgame
+     124   00:825E                      
+     125   00:825E                      exit:
+     126   00:825E  C9                      ret
+     127   00:825F                      
+     128   00:825F                      
+     129   00:825F                      initialize_video:
+     130   00:825F  3E 02                   ld      a,2                                 ;change to Screen 2
+     131   00:8261  CD 5F 00                call    CHGMOD
+     132   00:8264                      
+     133   00:8264  3A E0 F3                ld      a,(RG1SAV)
+     134   00:8267  F6 02                   or      00000010b                           ;force 16x16 sprites (screen 2,2)
+     135   00:8269  E6 FE                   and     11111110b                           ;sprites wont be extended
+     136   00:826B                      
+     137   00:826B  47                      ld      b,a
+     138   00:826C  0E 01                   ld      c,1
+     139   00:826E  CD 47 00                call    WRTVDP                              ;writes all to the VDP register 1
+     140   00:8271  C9                      ret
+     141   00:8272                      
+     142   00:8272                      
+     143   00:8272                      initialize_tiles_and_sprites:
+     144   00:8272  21 40 86                ld      hl,tiles_data                       ;load tiles
+     145   00:8275  11 00 00                ld      de,#0000
+     146   00:8278  01 00 18                ld      bc,256*24
+     147   00:827B  CD 5C 00                call    LDIRVM
+     148   00:827E                          
+     149   00:827E                      
+     150   00:827E  21 40 9E                ld      hl,tiles_color                      ;load tile colors
+     151   00:8281  11 00 20                ld      de,#2000
+     152   00:8284  01 00 18                ld      bc,256*24
+     153   00:8287  CD 5C 00                call    LDIRVM
+     154   00:828A                      
+     155   00:828A                          
+     156   00:828A  21 40 B6                ld      hl,screen_data                      ;load screen tile pattern
+     157   00:828D  11 00 18                ld      de,#1800
+     158   00:8290  01 00 03                ld      bc,256*3
+     159   00:8293  CD 5C 00                call    LDIRVM
+     160   00:8296                      
+     161   00:8296  21 40 B9                ld      hl,spr_ball                       ;load ball sprite
+     162   00:8299  11 00 38                ld      de,#3800
+     163   00:829C  01 20 00                ld      bc,8*4
+     164   00:829F  CD 5C 00                call    LDIRVM
+     165   00:82A2                      
+     166   00:82A2  21 60 B9                ld      hl,spr_ply1_1                       ;load player 1 sprite 1
+     167   00:82A5  11 20 38                ld      de,#3820
+     168   00:82A8  01 20 00                ld      bc,8*4
+     169   00:82AB  CD 5C 00                call    LDIRVM
+     170   00:82AE  21 80 B9                ld      hl,spr_ply1_2                       ;load player 1 sprite 2
+     171   00:82B1  11 40 38                ld      de,#3840
+     172   00:82B4  01 20 00                ld      bc,8*4
+     173   00:82B7  CD 5C 00                call    LDIRVM
+     174   00:82BA                      
+     175   00:82BA  21 A0 B9                ld      hl,spr_ply2_1                       ;load player 2 sprite 1
+     176   00:82BD  11 60 38                ld      de,#3860
+     177   00:82C0  01 20 00                ld      bc,8*4
+     178   00:82C3  CD 5C 00                call    LDIRVM
+     179   00:82C6  21 C0 B9                ld      hl,spr_ply2_2                       ;load player 2 sprite 2
+     180   00:82C9  11 80 38                ld      de,#3880
+     181   00:82CC  01 20 00                ld      bc,8*4
+     182   00:82CF  CD 5C 00                call    LDIRVM
+     183   00:82D2                      
+     184   00:82D2  C9                      ret
+     185   00:82D3                          
+     186   00:82D3                      
+     187   00:82D3                      initialize_variables:
+     188   00:82D3                          ; ball_x:                 db      30
+     189   00:82D3                          ; ball_y:                 db      100
+     190   00:82D3                          ; ball_speed:             db      1
+     191   00:82D3                          ; computer_speed:         db      1
+     192   00:82D3                          ; ball_bounces:           db      0
+     193   00:82D3                          ; ply1_y:                 db      50
+     194   00:82D3                          ; ply2_y:                 db      80
+     195   00:82D3                          ; goal_status:   
+     196   00:82D3  3E 7E                   ld      a,126
+     197   00:82D5  32 79 BA                ld      (ball_x),a
+     198   00:82D8  3E 60                   ld      a,96
+     199   00:82DA  32 7A BA                ld      (ball_y),a
+     200   00:82DD  32 7F BA                ld      (ply1_y),a
+     201   00:82E0  32 80 BA                ld      (ply2_y),a
+     202   00:82E3  3E 01                   ld      a,1
+     203   00:82E5  32 7D BA                ld      (ball_speed),a
+     204   00:82E8  3E 01                   ld      a,1
+     205   00:82EA  32 81 BA                ld      (computer_speed),a
+     206   00:82ED  3E 00                   ld      a,0
+     207   00:82EF  32 7E BA                ld      (ball_bounces),a
+     208   00:82F2  32 82 BA                ld      (goal_status),a
+     209   00:82F5  CD 7C 84                call    update_sprite_attrs
+     210   00:82F8  CD FC 82                call    dump_sprite_attrs_to_ram
+     211   00:82FB  C9                      ret
+     212   00:82FC                      
+     213   00:82FC                      dump_sprite_attrs_to_ram:
+     214   00:82FC  21 86 BA                ld      hl,ball_spr_attr                    ;set ball sprite attributes
+     215   00:82FF  11 00 1B                ld      de,#1b00
+     216   00:8302  01 04 00                ld      bc,4
+     217   00:8305                      
+     218   00:8305  CD 5C 00                call    LDIRVM
+     219   00:8308  21 8A BA                ld      hl,spr_ply1_1_attr                  ;set attributes for player 1 sprite 1
+     220   00:830B  11 04 1B                ld      de,#1b04
+     221   00:830E  01 04 00                ld      bc,4
+     222   00:8311  CD 5C 00                call    LDIRVM
+     223   00:8314  21 8E BA                ld      hl,spr_ply1_2_attr                  ;set attributes for player 1 sprite 2
+     224   00:8317  11 08 1B                ld      de,#1b08
+     225   00:831A  01 04 00                ld      bc,4
+     226   00:831D  CD 5C 00                call    LDIRVM
+     227   00:8320                      
+     228   00:8320  21 92 BA                ld      hl,spr_ply2_1_attr                  ;set attributes for player 2 sprite 1
+     229   00:8323  11 0C 1B                ld      de,#1b0c
+     230   00:8326  01 04 00                ld      bc,4
+     231   00:8329  CD 5C 00                call    LDIRVM
+     232   00:832C  21 96 BA                ld      hl,spr_ply2_2_attr                  ;set attributes for player 2 sprite 2
+     233   00:832F  11 10 1B                ld      de,#1b10
+     234   00:8332  01 04 00                ld      bc,4
+     235   00:8335  CD 5C 00                call    LDIRVM
+     236   00:8338                      
+     237   00:8338  C9                      ret
+     238   00:8339                      
+     239   00:8339                      ;------------------------------------------------------------------------
+     240   00:8339                      ; Update ball increments
+     241   00:8339                      ;------------------------------------------------------------------------
+     242   00:8339                      update_ball_deltas:
+     243   00:8339  3A 7A BA                ld      a,(ball_y)                          ;load ball y position into a registry
+     244   00:833C  FE B2                   cp      178                                 ;compare with 178 (max y is 191)
+     245   00:833E  30 05                   jr      nc,change_ball_delta_y              ;jump if y position greater
+     246   00:8340  FE 06                   cp      6                                   ;compare with 6
+     247   00:8342  38 01                   jr      c,change_ball_delta_y               ;jump if lower
+     248   00:8344                      
+     249   00:8344                      check_delta_x:
+     250   00:8344                          ; ld      a,(ball_x)
+     251   00:8344                          ; cp      247
+     252   00:8344                          ; jp      END
+     253   00:8344                          ; cp      4
+     254   00:8344                          ; jp      END
+     255   00:8344                      delta_ret:
+     256   00:8344  C9                      ret
+     257   00:8345                      
+     258   00:8345                      change_ball_delta_y:
+     259   00:8345                          ; ld      a,(ball_bounces)
+     260   00:8345                          ; inc     a
+     261   00:8345                          ; ld      (ball_bounces),a
+     262   00:8345  3A 7C BA                ld      a,(ball_y_inc)                      
+     263   00:8348  FE 01                   cp      1
+     264   00:834A  28 0F                   jr      z,change_ball_delta_y_negative
+     265   00:834C  3A 7A BA                ld      a,(ball_y)                          ;substract a pixel from x
+     266   00:834F  87                      add     a
+     267   00:8350  32 7A BA                ld      (ball_y),a                          ;end of substract
+     268   00:8353  3E 01                   ld      a,1
+     269   00:8355  32 7C BA                ld      (ball_y_inc),a
+     270   00:8358  C3 44 83                jp      check_delta_x
+     271   00:835B                      change_ball_delta_y_negative:
+     272   00:835B  3A 7A BA                ld      a,(ball_y)                          ;add a pixel to y
+     273   00:835E  3D                      dec     a
+     274   00:835F  32 7A BA                ld      (ball_y),a
+     275   00:8362  3E 00                   ld      a,0                                 ;now change delta
+     276   00:8364  32 7C BA                ld      (ball_y_inc),a
+     277   00:8367  C3 44 83                jp      check_delta_x
+     278   00:836A                      
+     279   00:836A                      ; change_ball_delta_x:
+     280   00:836A                      ;     ld      a,(ball_bounces)
+     281   00:836A                      ;     inc     a
+     282   00:836A                      ;     ld      (ball_bounces),a
+     283   00:836A                      ;     ld      a,(ball_x_inc)                      
+     284   00:836A                      ;     cp      1
+     285   00:836A                      ;     jr      z,change_ball_delta_x_negative
+     286   00:836A                      ;     ld      a,(ball_x)                          ;substract a pixel from x
+     287   00:836A                      ;     add     a
+     288   00:836A                      ;     ld      (ball_x),a                          ;end of substract
+     289   00:836A                      ;     ld      a,1
+     290   00:836A                      ;     ld      (ball_x_inc),a
+     291   00:836A                      ;     jp      delta_ret
+     292   00:836A                      ; change_ball_delta_x_negative:
+     293   00:836A                      ;     ld      a,(ball_x)                          ;add a pixel to x
+     294   00:836A                      ;     dec     a
+     295   00:836A                      ;     ld      (ball_x),a
+     296   00:836A                      ;     ld      a,0                                 ;now change delta
+     297   00:836A                      ;     ld      (ball_x_inc),a
+     298   00:836A                      ;     jp      delta_ret
+     299   00:836A                      
+     300   00:836A                      ;------------------------------------------------------------------------
+     301   00:836A                      ; Update ball position
+     302   00:836A                      ;------------------------------------------------------------------------
+     303   00:836A                      update_ball_position:
+     304   00:836A  3A 7C BA                ld      a,(ball_y_inc)
+     305   00:836D  FE 01                   cp      1
+     306   00:836F  CA 9B 83                jp      z,ball_y_increase
+     307   00:8372                      
+     308   00:8372  3A 7D BA                ld      a,(ball_speed)
+     309   00:8375  47                      ld      b,a
+     310   00:8376  3A 7A BA                ld      a,(ball_y)
+     311   00:8379  CD C4 83                call    loop_position_decrement
+     312   00:837C  32 7A BA                ld      (ball_y),a
+     313   00:837F                      
+     314   00:837F                      update_pos_x:    
+     315   00:837F  3A 7B BA                ld      a,(ball_x_inc)
+     316   00:8382  FE 01                   cp      1
+     317   00:8384  28 24                   jr      z,ball_x_increase
+     318   00:8386                          
+     319   00:8386  3A 7D BA                ld      a,(ball_speed)
+     320   00:8389  47                      ld      b,a
+     321   00:838A  3A 79 BA                ld      a,(ball_x)
+     322   00:838D  CD C4 83                call    loop_position_decrement
+     323   00:8390  FE F9                   cp      249 ;ojo
+     324   00:8392                          ; call    nc,goal_player_2
+     325   00:8392  06 02                   ld      b,2
+     326   00:8394  D4 C8 83                call    nc,change_goal_status
+     327   00:8397  32 79 BA                ld      (ball_x),a
+     328   00:839A                      update_ret:
+     329   00:839A  C9                      ret
+     330   00:839B                      
+     331   00:839B                      
+     332   00:839B                      ball_y_increase:
+     333   00:839B  3A 7D BA                ld      a,(ball_speed)
+     334   00:839E  47                      ld      b,a
+     335   00:839F  3A 7A BA                ld      a,(ball_y)
+     336   00:83A2  CD C0 83                call    loop_position_increment
+     337   00:83A5  32 7A BA                ld      (ball_y),a
+     338   00:83A8  18 D5                   jr      update_pos_x
+     339   00:83AA                      
+     340   00:83AA                      ball_x_increase:
+     341   00:83AA  3A 7D BA                ld      a,(ball_speed)
+     342   00:83AD  47                      ld      b,a
+     343   00:83AE  3A 79 BA                ld      a,(ball_x)
+     344   00:83B1  CD C0 83                call    loop_position_increment
+     345   00:83B4  FE F9                   cp      249
+     346   00:83B6                          ; call    nc,goal_player_1
+     347   00:83B6  06 01                   ld      b,1
+     348   00:83B8  D4 C8 83                call    nc,change_goal_status
+     349   00:83BB  32 79 BA                ld      (ball_x),a
+     350   00:83BE  18 DA                   jr      update_ret
+     351   00:83C0                      
+     352   00:83C0                      
+     353   00:83C0                      loop_position_increment
+     354   00:83C0  3C                      inc     a
+     355   00:83C1  10 FD                   djnz    loop_position_increment
+     356   00:83C3  C9                      ret
+     357   00:83C4                      
+     358   00:83C4                      loop_position_decrement
+     359   00:83C4  3D                      dec     a
+     360   00:83C5  10 FD                   djnz    loop_position_decrement
+     361   00:83C7  C9                      ret
+     362   00:83C8                      
+     363   00:83C8                      change_goal_status:
+     364   00:83C8  F5                      push    af
+     365   00:83C9  78                      ld      a,b
+     366   00:83CA  32 82 BA                ld      (goal_status),a
+     367   00:83CD  F1                      pop     af
+     368   00:83CE  C9                      ret
+     369   00:83CF                      reset_goal_status
+     370   00:83CF  F5                      push    af
+     371   00:83D0  3E 00                   ld      a,0
+     372   00:83D2  32 82 BA                ld      (goal_status),a
+     373   00:83D5  F1                      pop     af
+     374   00:83D6  C9                      ret
+     375   00:83D7                      
+     376   00:83D7                      ;------------------------------------------------------------------------
+     377   00:83D7                      ; Update computer player
+     378   00:83D7                      ;------------------------------------------------------------------------
+     379   00:83D7                      update_computer_player:
+     380   00:83D7  3A 80 BA                ld      a,(ply2_y)
+     381   00:83DA  47                      ld      b,a
+     382   00:83DB  3A 7A BA                ld      a,(ball_y)
+     383   00:83DE  B8                      cp      b
+     384   00:83DF  28 1A                   jr      z,update_computer_player_finish
+     385   00:83E1  38 0D                   jr      c,update_computer_player_decrease
+     386   00:83E3  3A 81 BA                ld      a,(computer_speed)
+     387   00:83E6  47                      ld      b,a
+     388   00:83E7  3A 80 BA                ld      a,(ply2_y)
+     389   00:83EA  80                      add     a,b
+     390   00:83EB  32 80 BA                ld      (ply2_y),a
+     391   00:83EE  18 0B                   jr      update_computer_player_finish
+     392   00:83F0                      update_computer_player_decrease:
+     393   00:83F0  3A 81 BA                ld      a,(computer_speed)
+     394   00:83F3  47                      ld      b,a
+     395   00:83F4  3A 80 BA                ld      a,(ply2_y)
+     396   00:83F7  90                      sub     a,b
+     397   00:83F8  32 80 BA                ld      (ply2_y),a
+     398   00:83FB                      update_computer_player_finish
+     399   00:83FB  C9                      ret
+     400   00:83FC                      
+     401   00:83FC                      ;------------------------------------------------------------------------
+     402   00:83FC                      ; Update Player from controls
+     403   00:83FC                      ;------------------------------------------------------------------------
+     404   00:83FC                      update_player_1_controls
+     405   00:83FC  AF                      xor     a
+     406   00:83FD  CD D5 00                call    GTSTCK
+     407   00:8400  FE 01                   cp      1
+     408   00:8402  28 06                   jr      z,move_player_1_up
+     409   00:8404  FE 05                   cp      5
+     410   00:8406  28 15                   jr      z,move_player_1_down
+     411   00:8408  18 24                   jr      update_player_1_controls_finish
+     412   00:840A                      move_player_1_up
+     413   00:840A  3A 7F BA                ld      a,(ply1_y)
+     414   00:840D  D6 03                   sub     a,3
+     415   00:840F  32 7F BA                ld      (ply1_y),a
+     416   00:8412  FE 10                   cp      16
+     417   00:8414  30 18                   jr      nc,update_player_1_controls_finish
+     418   00:8416  3E 10                   ld      a,16
+     419   00:8418  32 7F BA                ld      (ply1_y),a
+     420   00:841B  18 11                   jr      update_player_1_controls_finish
+     421   00:841D                      move_player_1_down
+     422   00:841D  3A 7F BA                ld      a,(ply1_y)
+     423   00:8420  C6 03                   add     a,3
+     424   00:8422  32 7F BA                ld      (ply1_y),a
+     425   00:8425  FE AF                   cp      175
+     426   00:8427  38 05                   jr      c,update_player_1_controls_finish
+     427   00:8429  3E AF                   ld      a,175
+     428   00:842B  32 7F BA                ld      (ply1_y),a
+     429   00:842E                      update_player_1_controls_finish:
+     430   00:842E  C9                      ret
+     431   00:842F                      
+     432   00:842F                      ;------------------------------------------------------------------------
+     433   00:842F                      ; Check collisions
+     434   00:842F                      ;------------------------------------------------------------------------
+     435   00:842F                      check_collisions:
+     436   00:842F  3A E7 F3                ld      a,(STATFL)
+     437   00:8432  CB 6F                   bit     5,a
+     438   00:8434  28 45                   jr      z,check_collisions_end
+     439   00:8436                      
+     440   00:8436  3A 7E BA                ld      a,(ball_bounces)                    ;increase ball bounces
+     441   00:8439  3C                      inc     a
+     442   00:843A  32 7E BA                ld      (ball_bounces),a
+     443   00:843D  3A 7D BA                ld      a,(ball_speed)                      ;if ball speed is equal a number, continue
+     444   00:8440  FE 04                   cp      4
+     445   00:8442  28 1A                   jr      z,continue_collision
+     446   00:8444  3A 7E BA                ld      a,(ball_bounces)                    ;if ball bounces dont reach a number, continue
+     447   00:8447  FE 04                   cp      4
+     448   00:8449  20 13                   jr      nz,continue_collision
+     449   00:844B  3E 00                   ld      a,0                                 ;reset ball bounces to 0
+     450   00:844D  32 7E BA                ld      (ball_bounces),a
+     451   00:8450  3A 7D BA                ld      a,(ball_speed)                      ;increase ball speed
+     452   00:8453  3C                      inc     a
+     453   00:8454  32 7D BA                ld      (ball_speed),a
+     454   00:8457  FE 04                   cp      4                                   ;increase computer speed if it lower than 3
+     455   00:8459  30 03                   jr      nc,continue_collision
+     456   00:845B  32 81 BA                ld      (computer_speed),a
+     457   00:845E                      
+     458   00:845E                      continue_collision:
+     459   00:845E  3A 7B BA                ld      a,(ball_x_inc)
+     460   00:8461  FE 01                   cp      1
+     461   00:8463  28 0C                   jr      z,ball_collision_set_decrease
+     462   00:8465                      
+     463   00:8465                          ; ld      a,(ball_x)
+     464   00:8465                          ; cp      #F8
+     465   00:8465                          ; jr      nc,check_collisions_end
+     466   00:8465                      
+     467   00:8465  3E 01                   ld      a,1
+     468   00:8467  32 7B BA                ld      (ball_x_inc),a
+     469   00:846A  3E 09                   ld      a,9
+     470   00:846C  32 79 BA                ld      (ball_x),a
+     471   00:846F  18 0A                   jr      check_collisions_end
+     472   00:8471                      ball_collision_set_decrease:
+     473   00:8471  3E 00                   ld      a,0
+     474   00:8473  32 7B BA                ld      (ball_x_inc),a
+     475   00:8476  3E F0                   ld      a,240
+     476   00:8478  32 79 BA                ld      (ball_x),a
+     477   00:847B                      check_collisions_end:
+     478   00:847B  C9                      ret
+     479   00:847C                      
+     480   00:847C                      ;------------------------------------------------------------------------
+     481   00:847C                      ; Update sprite attributes
+     482   00:847C                      ;------------------------------------------------------------------------
+     483   00:847C                      update_sprite_attrs:
+     484   00:847C  DD 21 86 BA             ld      ix,ball_spr_attr    ; Update ball attrs
+     485   00:8480  3A 7A BA                ld      a,(ball_y)          ; ball Y coordinate
+     486   00:8483  DD 77 00                ld      (ix+0),a
+     487   00:8486  3A 79 BA                ld      a,(ball_x)          ; ball X coordinate
+     488   00:8489  DD 77 01                ld      (ix+1),a
+     489   00:848C                      
+     490   00:848C  DD 21 8E BA             ld      ix,spr_ply1_2_attr  ; Update player 1 attrs
+     491   00:8490  3A 7F BA                ld      a,(ply1_y)          ; player 1 Y coordinate
+     492   00:8493  DD 77 00                ld      (ix+0),a
+     493   00:8496  DD 21 8A BA             ld      ix,spr_ply1_1_attr  ; Update player 1 attrs
+     494   00:849A  D6 10                   sub     a,16
+     495   00:849C  DD 77 00                ld      (ix+0),a
+     496   00:849F                      
+     497   00:849F  DD 21 96 BA             ld      ix,spr_ply2_2_attr  ; Update player 2 attrs
+     498   00:84A3  3A 80 BA                ld      a,(ply2_y)          ; player 2 Y coordinate
+     499   00:84A6  DD 77 00                ld      (ix+0),a
+     500   00:84A9  DD 21 92 BA             ld      ix,spr_ply2_1_attr  ; Update player 2 attrs
+     501   00:84AD  D6 10                   sub     a,16
+     502   00:84AF  DD 77 00                ld      (ix+0),a
+     503   00:84B2  C9                      ret
+     504   00:84B3                      
+     505   00:84B3                      ;------------------------------------------------------------------------
+     506   00:84B3                      ; Check Goals
+     507   00:84B3                      ;------------------------------------------------------------------------
+     508   00:84B3                      check_goal_status:
+     509   00:84B3  3A 82 BA                ld      a,(goal_status)
+     510   00:84B6  FE 01                   cp      1
+     511   00:84B8  CC D0 84                call    z,goal_player_1
+     512   00:84BB  3A 82 BA                ld      a,(goal_status)
+     513   00:84BE  FE 02                   cp      2
+     514   00:84C0  CC 2E 85                call    z,goal_player_2
+     515   00:84C3  CD CF 83                call    reset_goal_status
+     516   00:84C6  CD 8C 85                call    hide_ball
+     517   00:84C9  CD 3A 86                call    delay_wait_long
+     518   00:84CC  CD D3 82                call    initialize_variables
+     519   00:84CF  C9                      ret
+     520   00:84D0                      
+     521   00:84D0                      ;------------------------------------------------------------------------
+     522   00:84D0                      ; Player 1 Goal
+     523   00:84D0                      ;------------------------------------------------------------------------
+     524   00:84D0                      goal_player_1:
+     525   00:84D0  3A 83 BA                ld      a,(player_1_score)
+     526   00:84D3  FE 09                   cp      9
+     527   00:84D5  20 06                   jr      nz,goal_player_1_ini
+     528   00:84D7  3E 02                   ld      a,2
+     529   00:84D9  32 85 BA                ld      (player_winner),a
+     530   00:84DC  C9                      ret
+     531   00:84DD                      
+     532   00:84DD                      goal_player_1_ini:
+     533   00:84DD  CD DC 85                call    get_score_marker
+     534   00:84E0                      
+     535   00:84E0  21 6C 18                ld      hl,#186C
+     536   00:84E3  54                      ld      d,h
+     537   00:84E4  5D                      ld      e,l
+     538   00:84E5  E5                      push    hl
+     539   00:84E6  21 E1 B9                ld      hl,tile_marker_blur
+     540   00:84E9  CD A8 85                call    marker_change
+     541   00:84EC  E1                      pop     hl
+     542   00:84ED  CD 36 86                call    delay_wait_short
+     543   00:84F0                          
+     544   00:84F0  3A 83 BA                ld      a,(player_1_score)
+     545   00:84F3  CD DC 85                call    get_score_marker
+     546   00:84F6  54                      ld      d,h
+     547   00:84F7  5D                      ld      e,l
+     548   00:84F8  E5                      push    hl
+     549   00:84F9  21 E2 B9                ld      hl,tile_marker_off
+     550   00:84FC  CD A8 85                call    marker_change
+     551   00:84FF  E1                      pop     hl
+     552   00:8500  CD 36 86                call    delay_wait_short
+     553   00:8503                      
+     554   00:8503  3A 83 BA                ld      a,(player_1_score)
+     555   00:8506  3C                      inc     a
+     556   00:8507  32 83 BA                ld      (player_1_score),a
+     557   00:850A                      
+     558   00:850A  3A 83 BA                ld      a,(player_1_score)
+     559   00:850D  CD DC 85                call    get_score_marker
+     560   00:8510  54                      ld      d,h
+     561   00:8511  5D                      ld      e,l
+     562   00:8512  E5                      push    hl
+     563   00:8513  21 E1 B9                ld      hl,tile_marker_blur
+     564   00:8516  CD A8 85                call    marker_change
+     565   00:8519  E1                      pop     hl
+     566   00:851A  CD 36 86                call    delay_wait_short
+     567   00:851D                      
+     568   00:851D  3A 83 BA                ld      a,(player_1_score)
+     569   00:8520  CD DC 85                call    get_score_marker
+     570   00:8523  54                      ld      d,h
+     571   00:8524  5D                      ld      e,l
+     572   00:8525  E5                      push    hl
+     573   00:8526  21 E0 B9                ld      hl,tile_marker_on
+     574   00:8529  CD A8 85                call    marker_change
+     575   00:852C  E1                      pop     hl
+     576   00:852D                      
+     577   00:852D  C9                      ret
+     578   00:852E                      
+     579   00:852E                      ;------------------------------------------------------------------------
+     580   00:852E                      ; Player 2 Goal
+     581   00:852E                      ;------------------------------------------------------------------------
+     582   00:852E                      goal_player_2:
+     583   00:852E  3A 84 BA                ld      a,(player_2_score)
+     584   00:8531  FE 09                   cp      9
+     585   00:8533  20 06                   jr      nz,goal_player_2_ini
+     586   00:8535  3E 02                   ld      a,2
+     587   00:8537  32 85 BA                ld      (player_winner),a
+     588   00:853A  C9                      ret
+     589   00:853B                      
+     590   00:853B                      goal_player_2_ini:
+     591   00:853B  CD DC 85                call    get_score_marker
+     592   00:853E                      
+     593   00:853E  21 71 18                ld      hl,#1871
+     594   00:8541  54                      ld      d,h
+     595   00:8542  5D                      ld      e,l
+     596   00:8543  E5                      push    hl
+     597   00:8544  21 E1 B9                ld      hl,tile_marker_blur
+     598   00:8547  CD A8 85                call    marker_change
+     599   00:854A  E1                      pop     hl
+     600   00:854B  CD 36 86                call    delay_wait_short
+     601   00:854E                          
+     602   00:854E  3A 84 BA                ld      a,(player_2_score)
+     603   00:8551  CD DC 85                call    get_score_marker
+     604   00:8554  54                      ld      d,h
+     605   00:8555  5D                      ld      e,l
+     606   00:8556  E5                      push    hl
+     607   00:8557  21 E2 B9                ld      hl,tile_marker_off
+     608   00:855A  CD A8 85                call    marker_change
+     609   00:855D  E1                      pop     hl
+     610   00:855E  CD 36 86                call    delay_wait_short
+     611   00:8561                      
+     612   00:8561  3A 84 BA                ld      a,(player_2_score)
+     613   00:8564  3C                      inc     a
+     614   00:8565  32 84 BA                ld      (player_2_score),a
+     615   00:8568                      
+     616   00:8568  3A 84 BA                ld      a,(player_2_score)
+     617   00:856B  CD DC 85                call    get_score_marker
+     618   00:856E  54                      ld      d,h
+     619   00:856F  5D                      ld      e,l
+     620   00:8570  E5                      push    hl
+     621   00:8571  21 E1 B9                ld      hl,tile_marker_blur
+     622   00:8574  CD A8 85                call    marker_change
+     623   00:8577  E1                      pop     hl
+     624   00:8578  CD 36 86                call    delay_wait_short
+     625   00:857B                      
+     626   00:857B  3A 84 BA                ld      a,(player_2_score)
+     627   00:857E  CD DC 85                call    get_score_marker
+     628   00:8581  54                      ld      d,h
+     629   00:8582  5D                      ld      e,l
+     630   00:8583  E5                      push    hl
+     631   00:8584  21 E0 B9                ld      hl,tile_marker_on
+     632   00:8587  CD A8 85                call    marker_change
+     633   00:858A  E1                      pop     hl
+     634   00:858B                      
+     635   00:858B  C9                      ret
+     636   00:858C                      
+     637   00:858C                      hide_ball:
+     638   00:858C  3E C0                   ld      a,192               ;put ball sprite Y under screen limit
+     639   00:858E  32 7A BA                ld      (ball_y),a
+     640   00:8591  DD 21 86 BA             ld      ix,ball_spr_attr    ;Update ball sprite attrs
+     641   00:8595  3A 7A BA                ld      a,(ball_y)
+     642   00:8598  DD 77 00                ld      (ix+0),a
+     643   00:859B  21 86 BA                ld      hl,ball_spr_attr    ;dump ball sprite attributes to VRAM
+     644   00:859E  11 00 1B                ld      de,#1b00
+     645   00:85A1  01 02 00                ld      bc,2
+     646   00:85A4  CD 5C 00                call    LDIRVM
+     647   00:85A7  C9                      ret
+     648   00:85A8                      
+     649   00:85A8                      ;------------------------------------------------------------------------
+     650   00:85A8                      ; Routines for changing the Score markers
+     651   00:85A8                      ;------------------------------------------------------------------------
+     652   00:85A8                      marker_change
+     653   00:85A8  3E 05                   ld      a,5
+     654   00:85AA  06 03                   ld      b,3
+     655   00:85AC                      marker_change_ini:
+     656   00:85AC  F5                      push    af
+     657   00:85AD                      marker_change_step:
+     658   00:85AD  C5                      push    bc
+     659   00:85AE  44                      ld      b,h
+     660   00:85AF  4D                      ld      c,l
+     661   00:85B0  E5                      push    hl
+     662   00:85B1  60                      ld      h,b
+     663   00:85B2  69                      ld      l,c
+     664   00:85B3  DD CB 00 46             bit     0,(ix)
+     665   00:85B7  C4 D1 85                call    nz,change_marker_tile
+     666   00:85BA  E1                      pop     hl
+     667   00:85BB  C1                      pop     bc
+     668   00:85BC  DD 23                   inc     ix
+     669   00:85BE  13                      inc     de
+     670   00:85BF  05                      dec     b
+     671   00:85C0  20 EB                   jr      nz,marker_change_step
+     672   00:85C2  06 03                   ld      b,3
+     673   00:85C4                      
+     674   00:85C4  E5                      push    hl
+     675   00:85C5  21 1D 00                ld      hl,29
+     676   00:85C8  19                      add     hl,de
+     677   00:85C9  54                      ld      d,h
+     678   00:85CA  5D                      ld      e,l
+     679   00:85CB  E1                      pop     hl
+     680   00:85CC                          
+     681   00:85CC  F1                      pop     af
+     682   00:85CD  3D                      dec     a
+     683   00:85CE  20 DC                   jr      nz,marker_change_ini
+     684   00:85D0  C9                      ret
+     685   00:85D1                      
+     686   00:85D1                      
+     687   00:85D1                      change_marker_tile:
+     688   00:85D1  D5                      push    de
+     689   00:85D2  C5                      push    bc
+     690   00:85D3  01 01 00                ld      bc,1
+     691   00:85D6  CD 5C 00                call    LDIRVM
+     692   00:85D9  C1                      pop     bc
+     693   00:85DA  D1                      pop     de
+     694   00:85DB  C9                      ret
+     695   00:85DC                      
+     696   00:85DC                      get_score_marker:
+     697   00:85DC  FE 00                   cp      0
+     698   00:85DE  28 24                   jr      z,get_score_marker_0
+     699   00:85E0  FE 01                   cp      1
+     700   00:85E2  28 25                   jr      z,get_score_marker_1
+     701   00:85E4  FE 02                   cp      2
+     702   00:85E6  28 26                   jr      z,get_score_marker_2
+     703   00:85E8  FE 03                   cp      3
+     704   00:85EA  28 27                   jr      z,get_score_marker_3
+     705   00:85EC  FE 04                   cp      4
+     706   00:85EE  28 28                   jr      z,get_score_marker_4
+     707   00:85F0  FE 05                   cp      5
+     708   00:85F2  28 29                   jr      z,get_score_marker_5
+     709   00:85F4  FE 06                   cp      6
+     710   00:85F6  28 2A                   jr      z,get_score_marker_6
+     711   00:85F8  FE 07                   cp      7
+     712   00:85FA  28 2B                   jr      z,get_score_marker_7
+     713   00:85FC  FE 08                   cp      8
+     714   00:85FE  28 2C                   jr      z,get_score_marker_8
+     715   00:8600  FE 09                   cp      9
+     716   00:8602  28 2D                   jr      z,get_score_marker_9
+     717   00:8604                      get_score_marker_0:
+     718   00:8604  DD 21 E3 B9             ld      ix,marker_0
+     719   00:8608  C9                      ret
+     720   00:8609                      get_score_marker_1:
+     721   00:8609  DD 21 F2 B9             ld      ix,marker_1
+     722   00:860D  C9                      ret
+     723   00:860E                      get_score_marker_2:
+     724   00:860E  DD 21 01 BA             ld      ix,marker_2
+     725   00:8612  C9                      ret
+     726   00:8613                      get_score_marker_3:
+     727   00:8613  DD 21 10 BA             ld      ix,marker_3
+     728   00:8617  C9                      ret
+     729   00:8618                      get_score_marker_4:
+     730   00:8618  DD 21 1F BA             ld      ix,marker_4
+     731   00:861C  C9                      ret
+     732   00:861D                      get_score_marker_5:
+     733   00:861D  DD 21 2E BA             ld      ix,marker_5
+     734   00:8621  C9                      ret
+     735   00:8622                      get_score_marker_6:
+     736   00:8622  DD 21 3D BA             ld      ix,marker_6
+     737   00:8626  C9                      ret
+     738   00:8627                      get_score_marker_7:
+     739   00:8627  DD 21 4C BA             ld      ix,marker_7
+     740   00:862B  C9                      ret
+     741   00:862C                      get_score_marker_8:
+     742   00:862C  DD 21 5B BA             ld      ix,marker_8
+     743   00:8630  C9                      ret
+     744   00:8631                      get_score_marker_9:
+     745   00:8631  DD 21 6A BA             ld      ix,marker_9
+     746   00:8635  C9                      ret
+     747   00:8636                      
+     748   00:8636                      
+     749   00:8636                      ;------------------------------------------------------------------------
+     750   00:8636                      ; Delay Wait
+     751   00:8636                      ;------------------------------------------------------------------------
+     752   00:8636                      delay_wait_short:
+     753   00:8636  06 05                   ld      b,5
+     754   00:8638  18 02                   jr      delay_wait_sync
+     755   00:863A                      delay_wait_long:
+     756   00:863A  06 3C                   ld      b,60
+     757   00:863C                      delay_wait_sync:
+     758   00:863C  76                      halt
+     759   00:863D  10 FD                   djnz    delay_wait_sync
+     760   00:863F  C9                      ret
+     761   00:8640                          
+     762   00:8640                      
+     763   00:8640                      ;------------------------------------------------------------------------
+     764   00:8640                      ; CONSTANTS
+     765   00:8640                      ;------------------------------------------------------------------------
+     766   00:8640                      
+     767   00:8640                      ;Tiles
+     768   00:8640  (1800)              tiles_data:             incbin "bin/pong_tiles.til"
+     769   00:9E40  (1800)              tiles_color:            incbin "bin/pong_tiles.col"
+     770   00:B640  (0300)              screen_data:            incbin "bin/pong_screen.dat"
+     771   00:B940                      
+     772   00:B940                      ;Sprites - Ball
+     773   00:B940                      ;spr_ball_1:             db  #07,#1F,#33,#6F,#7F,#FF,#FF,#FF,#FF,#FF,#7F,#7F,#3F,#1F,#07,#00,#C0,#F0,#F8,#FC,#FC,#FE,#FE,#FE,#FE,#FE,#FC,#FC,#F8,#F0,#C0,#00
+     774   00:B940                      
+     775   00:B940                      spr_ball:               db #38,#7C,#FE,#FE,#FE,#7C,#38,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
+     775   00:B940  38 7C FE FE FE 7C 38 00 00 00 00 00 00 00 00 00 
+     775   00:B950  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+     776   00:B960                      
+     777   00:B960                      ; Sprites - Player 1
+     778   00:B960                      spr_ply1_1:             db #18,#38,#78,#78,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
+     778   00:B960  18 38 78 78 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 
+     778   00:B970  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+     779   00:B980                      spr_ply1_2:             db #F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#78,#78,#38,#18,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
+     779   00:B980  F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 78 78 38 18 
+     779   00:B990  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+     780   00:B9A0                      
+     781   00:B9A0                      ; Sprites - Player 2
+     782   00:B9A0                      spr_ply2_1:             db #C0,#E0,#F0,#F0,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
+     782   00:B9A0  C0 E0 F0 F0 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 
+     782   00:B9B0  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+     783   00:B9C0                      spr_ply2_2:             db #F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F8,#F0,#F0,#E0,#C0,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00,#00
+     783   00:B9C0  F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F8 F0 F0 E0 C0 
+     783   00:B9D0  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+     784   00:B9E0                      
+     785   00:B9E0                      ; Marker tile position
+     786   00:B9E0  08                  tile_marker_on:         db #08
+     787   00:B9E1  28                  tile_marker_blur:       db #28
+     788   00:B9E2  30                  tile_marker_off:        db #30
+     789   00:B9E3                      
+     790   00:B9E3                      ; Markers
+     791   00:B9E3                      ; marker_0:               db #7B,#6F
+     792   00:B9E3                      ; marker_0_blur:          db #28,#28,#28,#28,#30,#28,#28,#30,#28,#28,#30,#28,#28,#28,#28
+     793   00:B9E3                      marker_0:          db 1,1,1,1,0,1,1,0,1,1,0,1,1,1,1
+     793   00:B9E3  01 01 01 01 00 01 01 00 01 01 00 01 01 01 01 
+     794   00:B9F2                      marker_1:          db 0,0,1,0,0,1,0,0,1,0,0,1,0,0,1
+     794   00:B9F2  00 00 01 00 00 01 00 00 01 00 00 01 00 00 01 
+     795   00:BA01                      marker_2:          db 1,1,1,0,0,1,1,1,1,1,0,0,1,1,1
+     795   00:BA01  01 01 01 00 00 01 01 01 01 01 00 00 01 01 01 
+     796   00:BA10                      marker_3:          db 1,1,1,0,0,1,0,1,1,0,0,1,1,1,1
+     796   00:BA10  01 01 01 00 00 01 00 01 01 00 00 01 01 01 01 
+     797   00:BA1F                      marker_4:          db 1,0,1,1,0,1,1,1,1,0,0,1,0,0,1
+     797   00:BA1F  01 00 01 01 00 01 01 01 01 00 00 01 00 00 01 
+     798   00:BA2E                      marker_5:          db 1,1,1,1,0,0,1,1,1,0,0,1,1,1,1
+     798   00:BA2E  01 01 01 01 00 00 01 01 01 00 00 01 01 01 01 
+     799   00:BA3D                      marker_6:          db 1,1,1,1,0,0,1,1,1,1,0,1,1,1,1
+     799   00:BA3D  01 01 01 01 00 00 01 01 01 01 00 01 01 01 01 
+     800   00:BA4C                      marker_7:          db 1,1,1,0,0,1,0,0,1,0,0,1,0,0,1
+     800   00:BA4C  01 01 01 00 00 01 00 00 01 00 00 01 00 00 01 
+     801   00:BA5B                      marker_8:          db 1,1,1,1,0,1,1,1,1,1,0,1,1,1,1
+     801   00:BA5B  01 01 01 01 00 01 01 01 01 01 00 01 01 01 01 
+     802   00:BA6A                      marker_9:          db 1,1,1,1,0,1,1,1,1,0,0,1,1,1,1
+     802   00:BA6A  01 01 01 01 00 01 01 01 01 00 00 01 01 01 01 
+     803   00:BA79                      
+     804   00:BA79                      ;------------------------------------------------------------------------
+     805   00:BA79                      ; VARIABLE DEFINITION
+     806   00:BA79                      ;------------------------------------------------------------------------
+     807   00:BA79  1E                  ball_x:                 db      30
+     808   00:BA7A  64                  ball_y:                 db      100
+     809   00:BA7B  01                  ball_x_inc:             db      1
+     810   00:BA7C  01                  ball_y_inc:             db      1
+     811   00:BA7D  01                  ball_speed:             db      1
+     812   00:BA7E  00                  ball_bounces:           db      0
+     813   00:BA7F  32                  ply1_y:                 db      50
+     814   00:BA80  50                  ply2_y:                 db      80
+     815   00:BA81  01                  computer_speed:         db      1
+     816   00:BA82  00                  goal_status:            db      0                   ; 0:no goal, 1:goal player 1, 2:goal player 2
+     817   00:BA83  00                  player_1_score:         db      0
+     818   00:BA84  00                  player_2_score:         db      0
+     819   00:BA85  00                  player_winner:          db      0
+     820   00:BA86                      
+     821   00:BA86                      ;ball_spr_attr:          ds      4,0                    ;Y, X, escena, color
+     822   00:BA86  5F 7A 00 0F         ball_spr_attr:          db      95, 122, #0, #0F        ;Y, X, escena, color
+     823   00:BA8A                      
+     824   00:BA8A  40 04 04 06         spr_ply1_1_attr:        db      64, 4, 4, 6        ;Y, X, escena, color
+     825   00:BA8E  50 04 08 06         spr_ply1_2_attr:        db      80, 4, 8, 6        ;Y, X, escena, color
+     826   00:BA92                      
+     827   00:BA92  4F F7 0C 07         spr_ply2_1_attr:        db      79, 247, 12, 7        ;Y, X, escena, color
+     828   00:BA96  5F F7 10 07         spr_ply2_2_attr:        db      95, 247, 16, 7        ;Y, X, escena, color
+     829   00:BA9A                      
+     830   00:BA9A                      
+     831   00:BA9A                      END:
+     832   00:BA9A  C9                      ret
 
     LABELS
 -------------------------------------------------
@@ -854,100 +881,104 @@ Errors: 0
 00:0000F3E6 X RG7SAV
 00:0000F3E7   STATFL
 00:00008200   START
-00:00008212   loop
-00:00008230 X pausemode
-00:0000823A   exit
-00:0000823B   initialize_video
-00:0000824E   initialize_tiles_and_sprites
-00:000082AF   initialize_variables
-00:000082DA   dump_sprite_attrs_to_ram
-00:00008317   update_ball_deltas
-00:00008322   check_delta_x
-00:00008322 X delta_ret
-00:00008323   change_ball_delta_y
-00:00008339   change_ball_delta_y_negative
-00:00008348   update_ball_position
-00:0000835D   update_pos_x
-00:00008378   update_ret
-00:00008379   ball_y_increase
-00:00008388   ball_x_increase
-00:0000839E   loop_position_increment
-00:000083A2   loop_position_decrement
-00:000083A6   change_goal_status
-00:000083AD   reset_goal_status
-00:000083B5   update_computer_player
-00:000083CE   update_computer_player_decrease
-00:000083D9   update_computer_player_finish
-00:000083DA   update_player_1_controls
-00:000083E8   move_player_1_up
-00:000083FB   move_player_1_down
-00:0000840C   update_player_1_controls_finish
-00:0000840D   check_collisions
-00:0000843C   continue_collision
-00:0000844F   ball_collision_set_decrease
-00:00008459   check_collisions_end
-00:0000845A   update_sprite_attrs
-00:00008491   check_goal_status
-00:000084AE   goal_player_1
-00:00008505   goal_player_2
-00:00008559   hide_ball
-00:00008575   marker_change
-00:00008579   marker_change_ini
-00:0000857A   marker_change_step
-00:0000859E   change_marker_tile
-00:000085A9   get_score_marker
-00:000085D1   get_score_marker_0
-00:000085D6   get_score_marker_1
-00:000085DB   get_score_marker_2
-00:000085E0   get_score_marker_3
-00:000085E5   get_score_marker_4
-00:000085EA   get_score_marker_5
-00:000085EF   get_score_marker_6
-00:000085F4   get_score_marker_7
-00:000085F9   get_score_marker_8
-00:000085FE   get_score_marker_9
-00:00008603   delay_wait_short
-00:00008607   delay_wait_long
-00:00008609   delay_wait_sync
-00:0000860D   tiles_data
-00:00009E0D   tiles_color
-00:0000B60D   screen_data
-00:0000B90D   spr_ball
-00:0000B92D   spr_ply1_1
-00:0000B94D   spr_ply1_2
-00:0000B96D   spr_ply2_1
-00:0000B98D   spr_ply2_2
-00:0000B9AD   tile_marker_on
-00:0000B9AE   tile_marker_blur
-00:0000B9AF   tile_marker_off
-00:0000B9B0   marker_0
-00:0000B9BF   marker_1
-00:0000B9CE   marker_2
-00:0000B9DD   marker_3
-00:0000B9EC   marker_4
-00:0000B9FB   marker_5
-00:0000BA0A   marker_6
-00:0000BA19   marker_7
-00:0000BA28   marker_8
-00:0000BA37   marker_9
-00:0000BA46   ball_x
-00:0000BA47   ball_y
-00:0000BA48   ball_x_inc
-00:0000BA49   ball_y_inc
-00:0000BA4A   ball_speed
-00:0000BA4B   ball_bounces
-00:0000BA4C   ply1_y
-00:0000BA4D   ply2_y
-00:0000BA4E   computer_speed
-00:0000BA4F   goal_status
-00:0000BA50   player_1_score
-00:0000BA51   player_2_score
-00:0000BA52   ball_spr_attr
-00:0000BA56   spr_ply1_1_attr
-00:0000BA5A   spr_ply1_2_attr
-00:0000BA5E   spr_ply2_1_attr
-00:0000BA62   spr_ply2_2_attr
-00:0000BA66   END
+00:00008217   loop
+00:0000823C X pausemode
+00:00008246   endgame
+00:0000825E   exit
+00:0000825F   initialize_video
+00:00008272   initialize_tiles_and_sprites
+00:000082D3   initialize_variables
+00:000082FC   dump_sprite_attrs_to_ram
+00:00008339   update_ball_deltas
+00:00008344   check_delta_x
+00:00008344 X delta_ret
+00:00008345   change_ball_delta_y
+00:0000835B   change_ball_delta_y_negative
+00:0000836A   update_ball_position
+00:0000837F   update_pos_x
+00:0000839A   update_ret
+00:0000839B   ball_y_increase
+00:000083AA   ball_x_increase
+00:000083C0   loop_position_increment
+00:000083C4   loop_position_decrement
+00:000083C8   change_goal_status
+00:000083CF   reset_goal_status
+00:000083D7   update_computer_player
+00:000083F0   update_computer_player_decrease
+00:000083FB   update_computer_player_finish
+00:000083FC   update_player_1_controls
+00:0000840A   move_player_1_up
+00:0000841D   move_player_1_down
+00:0000842E   update_player_1_controls_finish
+00:0000842F   check_collisions
+00:0000845E   continue_collision
+00:00008471   ball_collision_set_decrease
+00:0000847B   check_collisions_end
+00:0000847C   update_sprite_attrs
+00:000084B3   check_goal_status
+00:000084D0   goal_player_1
+00:000084DD   goal_player_1_ini
+00:0000852E   goal_player_2
+00:0000853B   goal_player_2_ini
+00:0000858C   hide_ball
+00:000085A8   marker_change
+00:000085AC   marker_change_ini
+00:000085AD   marker_change_step
+00:000085D1   change_marker_tile
+00:000085DC   get_score_marker
+00:00008604   get_score_marker_0
+00:00008609   get_score_marker_1
+00:0000860E   get_score_marker_2
+00:00008613   get_score_marker_3
+00:00008618   get_score_marker_4
+00:0000861D   get_score_marker_5
+00:00008622   get_score_marker_6
+00:00008627   get_score_marker_7
+00:0000862C   get_score_marker_8
+00:00008631   get_score_marker_9
+00:00008636   delay_wait_short
+00:0000863A   delay_wait_long
+00:0000863C   delay_wait_sync
+00:00008640   tiles_data
+00:00009E40   tiles_color
+00:0000B640   screen_data
+00:0000B940   spr_ball
+00:0000B960   spr_ply1_1
+00:0000B980   spr_ply1_2
+00:0000B9A0   spr_ply2_1
+00:0000B9C0   spr_ply2_2
+00:0000B9E0   tile_marker_on
+00:0000B9E1   tile_marker_blur
+00:0000B9E2   tile_marker_off
+00:0000B9E3   marker_0
+00:0000B9F2   marker_1
+00:0000BA01   marker_2
+00:0000BA10   marker_3
+00:0000BA1F   marker_4
+00:0000BA2E   marker_5
+00:0000BA3D   marker_6
+00:0000BA4C   marker_7
+00:0000BA5B   marker_8
+00:0000BA6A   marker_9
+00:0000BA79   ball_x
+00:0000BA7A   ball_y
+00:0000BA7B   ball_x_inc
+00:0000BA7C   ball_y_inc
+00:0000BA7D   ball_speed
+00:0000BA7E   ball_bounces
+00:0000BA7F   ply1_y
+00:0000BA80   ply2_y
+00:0000BA81   computer_speed
+00:0000BA82   goal_status
+00:0000BA83   player_1_score
+00:0000BA84   player_2_score
+00:0000BA85   player_winner
+00:0000BA86   ball_spr_attr
+00:0000BA8A   spr_ply1_1_attr
+00:0000BA8E   spr_ply1_2_attr
+00:0000BA92   spr_ply2_1_attr
+00:0000BA96   spr_ply2_2_attr
+00:0000BA9A   END
 
 
  Output: msx-pong.out
@@ -962,7 +993,7 @@ Errors: 0
 -------------------------------------------------
 
  Page: 00
-  Org: 00008200  Size: *  Used: 0000386E
+  Org: 00008200  Size: *  Used: 000038A2
 
    Address   Length Align   Label
-   00008200   14446         START
+   00008200   14498         START

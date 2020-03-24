@@ -71,6 +71,8 @@ START:
     call    update_sprite_attrs
     call    dump_sprite_attrs_to_ram
     call    delay_wait_long
+    ld      a,0
+    ld      (player_winner),a
     ; call    CHGET
 
 loop:
@@ -85,6 +87,9 @@ loop:
     ld      a,(goal_status)
     cp      0
     call    nz,check_goal_status
+    ld      a,(player_winner)
+    cp      0
+    jr      nz,endgame
 
 pausemode:
     ld	    a,(KEYMTX+7)                        ;escape key is in row 7...
@@ -106,6 +111,16 @@ pausemode:
 
     jr      loop
 
+endgame:
+    ld      a,215
+    ld      (ball_y),a
+    ld      (ply1_y),a
+    ld      (ply2_y),a
+    call    update_sprite_attrs
+    call    dump_sprite_attrs_to_ram
+    ld	    a,(KEYMTX+8)
+	bit	    0,a
+    jr      nz,endgame
 
 exit:
     ret
@@ -190,7 +205,6 @@ initialize_variables:
     ld      (computer_speed),a
     ld      a,0
     ld      (ball_bounces),a
-    ld      a,0
     ld      (goal_status),a
     call    update_sprite_attrs
     call    dump_sprite_attrs_to_ram
@@ -508,9 +522,14 @@ check_goal_status:
 ; Player 1 Goal
 ;------------------------------------------------------------------------
 goal_player_1:
-    call    hide_ball
-
     ld      a,(player_1_score)
+    cp      9
+    jr      nz,goal_player_1_ini
+    ld      a,2
+    ld      (player_winner),a
+    ret
+
+goal_player_1_ini:
     call    get_score_marker
 
     ld      hl,#186C
@@ -562,6 +581,13 @@ goal_player_1:
 ;------------------------------------------------------------------------
 goal_player_2:
     ld      a,(player_2_score)
+    cp      9
+    jr      nz,goal_player_2_ini
+    ld      a,2
+    ld      (player_winner),a
+    ret
+
+goal_player_2_ini:
     call    get_score_marker
 
     ld      hl,#1871
@@ -790,6 +816,7 @@ computer_speed:         db      1
 goal_status:            db      0                   ; 0:no goal, 1:goal player 1, 2:goal player 2
 player_1_score:         db      0
 player_2_score:         db      0
+player_winner:          db      0
 
 ;ball_spr_attr:          ds      4,0                    ;Y, X, escena, color
 ball_spr_attr:          db      95, 122, #0, #0F        ;Y, X, escena, color
